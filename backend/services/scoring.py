@@ -24,7 +24,7 @@ def interest_match(interest_keywords: list[str], item_keywords: list[str]) -> fl
 
 
 def recency_decay(published_at: datetime, now: datetime, half_life_hours: float = 24.0) -> float:
-    """Exponential decay based on item age with a 24-hour half-life; future timestamps score 1.0."""
+    """Exponential decay based on item age with a 24-hour half-life; future timestamps score 1.0"""
     delta = (now - published_at).total_seconds()
     if delta <= 0:
         return 1.0
@@ -33,7 +33,7 @@ def recency_decay(published_at: datetime, now: datetime, half_life_hours: float 
 
 
 def popularity(metrics: dict, source_type: str) -> float:
-    """Log-scale engagement metrics into a [0, 1] popularity score per source type."""
+    """log-scale engagement metrics into a [0, 1] popularity score per source type"""
     if not metrics:
         return 0.0
     if source_type == "video":
@@ -52,7 +52,7 @@ def popularity(metrics: dict, source_type: str) -> float:
 
 
 def source_pref(source_type: str, prefs: dict) -> float:
-    """Return the user's preference for a source type, clamped to [0, 1] (default 0.5 if missing)."""
+    """Return the user's preference for a source type, clamped to [0, 1] (default 0.5 if missing)"""
     if source_type not in prefs:
         return 0.5
     value = prefs[source_type]
@@ -60,7 +60,7 @@ def source_pref(source_type: str, prefs: dict) -> float:
 
 
 def _parse_published(value: Any) -> Optional[datetime]:
-    """Parse an ISO-8601 string into a datetime, or return None on bad input."""
+    """parse an ISO-8601 string into a datetime, or return None on bad input"""
     if not value:
         return None
     try:
