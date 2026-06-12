@@ -51,7 +51,7 @@ def require_auth(view: Callable[..., Any]) -> Callable[..., Any]:
     """Reject requests without a valid bearer token.
 
     On success the authenticated user id is stashed on ``g.user_id`` so the
-    wrapped view (and anything downstream) can read it.
+    wrapped view can read it.
     """
 
     @functools.wraps(view)
