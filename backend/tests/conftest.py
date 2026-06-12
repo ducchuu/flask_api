@@ -6,6 +6,7 @@ import tempfile
 import pytest
 
 from backend.app import create_app
+from backend.auth import generate_token
 
 
 @pytest.fixture()
@@ -13,7 +14,7 @@ def app():
     """Spin up a test app backed by a real (but temporary) SQLite file.
 
     Using a file rather than :memory: means separate connections in the same
-    test all see each other's committed writes — which is how routes actually
+    test all see each other's committed writes - which is how routes actually
     work in practice.
     """
     db_fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -49,3 +50,13 @@ def make_user(db: sqlite3.Connection, username: str = "testuser") -> int:
     return db.execute(
         "SELECT id FROM users WHERE username = ?", [username]
     ).fetchone()["id"]
+
+
+def auth_headers(app, user_id: int) -> dict[str, str]:
+    """Build an Authorization header carrying a valid token for the given user.
+
+    Lets API tests authenticate without going through a login endpoint 
+    """
+    with app.app_context():
+        token = generate_token(user_id)
+    return {"Authorization": f"Bearer {token}"}
