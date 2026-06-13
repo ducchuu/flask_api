@@ -91,3 +91,63 @@ def test_cannot_touch_another_users_interest(app, client, db) -> None:
     assert client.delete(
         f"/api/interests/{created['id']}", headers=intruder
     ).status_code == 404
+
+
+def test_keywords_default_to_empty(app, client, db):
+    # leaving keywords out shouldn't blow up, we just store an empty list
+    headers = auth_headers(app, make_user(db))
+    resp = client.post("/api/interests", json={"name": "Space"}, headers=headers)
+    assert resp.status_code == 201
+    assert resp.get_json()["keywords"] == []
+
+
+def test_blank_name_rejected(app, client, db):
+    """A name that's just spaces is not a real name."""
+    headers = auth_headers(app, make_user(db))
+    resp = client.post("/api/interests", json={"name": "   "}, headers=headers)
+    assert resp.status_code == 400
+
+
+def test_keywords_must_be_a_list(app, client, db):
+    headers = auth_headers(app, make_user(db))
+    # sending keywords as a comma string instead of a list is a client mistake
+    resp = client.post(
+        "/api/interests",
+        json={"name": "AI", "keywords": "ai,ml"},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+def test_weight_must_be_a_number(app, client, db):
+    headers = auth_headers(app, make_user(db))
+    resp = client.post(
+        "/api/interests",
+        json={"name": "AI", "weight": "heavy"},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+def test_empty_body_is_400(app, client, db):
+    # POST with no JSON at all should be a 400, not a 500
+    headers = auth_headers(app, make_user(db))
+    assert client.post("/api/interests", headers=headers).status_code == 400
+
+
+def test_garbage_token_is_401(client):
+    resp = client.get(
+        "/api/interests", headers={"Authorization": "Bearer nonsense"}
+    )
+    assert resp.status_code == 401
+
+
+def test_get_missing_interest_is_404(app, client, db):
+    headers = auth_headers(app, make_user(db))
+    assert client.get("/api/interests/9999", headers=headers).status_code == 404
+
+
+def test_update_missing_interest_is_404(app, client, db):
+    headers = auth_headers(app, make_user(db))
+    resp = client.put("/api/interests/9999", json={"name": "x"}, headers=headers)
+    assert resp.status_code == 404
