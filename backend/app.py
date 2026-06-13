@@ -27,6 +27,7 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
     with app.app_context():
         init_db()
 
+    _register_error_handlers(app)
     _register_routes(app)
     return app
 
@@ -42,7 +43,31 @@ def _register_routes(app: Flask) -> None:
     from backend.routes.interests import bp as interests_bp
     from backend.routes.feed import bp as feed_bp
     from backend.routes.stories import bp as stories_bp
+    from backend.routes.collections import bp as collections_bp
 
     app.register_blueprint(interests_bp)
     app.register_blueprint(feed_bp)  # I added the blueprint to feed module
     app.register_blueprint(stories_bp)
+    app.register_blueprint(collections_bp)
+
+
+def _register_error_handlers(app: Flask) -> None:
+    """Return every error as a consistent JSON envelope.
+
+    Shape: {"error": {"code": <int>, "message": <str>}}, so the frontend gets
+    JSON for 4xx/5xx responses instead of Flask's default HTML error pages.
+    """
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(exc: HTTPException) -> Any:
+        response = jsonify({"error": {"code": exc.code, "message": exc.description}})
+        response.status_code = exc.code or 500
+        return response
+
+    @app.errorhandler(Exception)
+    def handle_unexpected(exc: Exception) -> Any:
+        if isinstance(exc, HTTPException):
+            raise exc
+        response = jsonify({"error": {"code": 500, "message": "Internal server error"}})
+        response.status_code = 500
+        return response
