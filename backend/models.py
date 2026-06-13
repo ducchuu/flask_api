@@ -21,6 +21,17 @@ def _load_keywords(raw: Optional[str]) -> list[str]:
     return value if isinstance(value, list) else []
 
 
+def _load_metrics(raw: Optional[str]) -> dict[str, Any]:
+    """Decode a metrics_json column into a dict, tolerating null/garbage."""
+    if not raw:
+        return {}
+    try:
+        value = json.loads(raw)
+    except (ValueError, TypeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
 @dataclass
 class Interest:
     """A topic a user follows, with optional keywords used for scoring."""
@@ -108,4 +119,98 @@ class Feedback:
             "item_id": self.item_id,
             "kind": self.kind,
             "created_at": self.created_at,
+        }
+
+
+@dataclass
+class Story:
+    """A cluster of related items that all cover the same event."""
+
+    id: int
+    title: Optional[str]
+    item_count: int
+    first_seen_at: Optional[str]
+    last_updated_at: Optional[str]
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Story":
+        """Build a Story from a database row."""
+        return cls(
+            id=row["id"],
+            title=row["title"],
+            item_count=row["item_count"],
+            first_seen_at=row["first_seen_at"],
+            last_updated_at=row["last_updated_at"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a JSON-friendly dict."""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "item_count": self.item_count,
+            "first_seen_at": self.first_seen_at,
+            "last_updated_at": self.last_updated_at,
+        }
+
+
+@dataclass
+class Item:
+    """A single piece of content (news article, video or discussion)."""
+
+    id: int
+    source_type: str
+    source_name: Optional[str]
+    url: Optional[str]
+    title: Optional[str]
+    summary: Optional[str]
+    author: Optional[str]
+    published_at: Optional[str]
+    metrics: dict[str, Any]
+    read_time_min: Optional[int]
+    sentiment_score: Optional[float]
+    sentiment_label: Optional[str]
+    keywords: list[str]
+    credibility_tier: Optional[str]
+    story_id: Optional[int]
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Item":
+        """Build an Item from a database row."""
+        return cls(
+            id=row["id"],
+            source_type=row["source_type"],
+            source_name=row["source_name"],
+            url=row["url"],
+            title=row["title"],
+            summary=row["summary"],
+            author=row["author"],
+            published_at=row["published_at"],
+            metrics=_load_metrics(row["metrics_json"]),
+            read_time_min=row["read_time_min"],
+            sentiment_score=row["sentiment_score"],
+            sentiment_label=row["sentiment_label"],
+            keywords=_load_keywords(row["keywords_json"]),
+            credibility_tier=row["credibility_tier"],
+            story_id=row["story_id"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a JSON-friendly dict."""
+        return {
+            "id": self.id,
+            "source_type": self.source_type,
+            "source_name": self.source_name,
+            "url": self.url,
+            "title": self.title,
+            "summary": self.summary,
+            "author": self.author,
+            "published_at": self.published_at,
+            "metrics": self.metrics,
+            "read_time_min": self.read_time_min,
+            "sentiment_score": self.sentiment_score,
+            "sentiment_label": self.sentiment_label,
+            "keywords": self.keywords,
+            "credibility_tier": self.credibility_tier,
+            "story_id": self.story_id,
         }
