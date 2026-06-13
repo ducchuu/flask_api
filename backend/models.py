@@ -46,13 +46,7 @@ class Interest:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-friendly dict (user_id stays server-side)."""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "keywords": self.keywords,
-            "weight": self.weight,
-            "created_at": self.created_at,
-        }
+        return { "id": self.id, "name": self.name, "keywords": self.keywords, "weight": self.weight, "created_at": self.created_at}
 
 
 @dataclass
