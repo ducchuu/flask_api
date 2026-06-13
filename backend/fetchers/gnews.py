@@ -11,11 +11,12 @@ def fetch_gnews(query: str) -> List[Dict[str, Any]]:
     fetches gnews data using api and normalizes using normalize_gnews module
     """
     api_key = os.getenv("GNEWS_API_KEY", "")
-    url = f"https://gnews.io/api/v4/search?q={query}&token={api_key}"
+    url = "https://gnews.io/api/v4/search"
     headers = {"User-Agent": "PulseAggregator/1.0"}
+    params = {"q": query, "token": api_key}
     
     try:
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers, params=params, timeout=5)
         if response.status_code != 200:
             return []
             

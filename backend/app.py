@@ -13,7 +13,7 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
 
     Args:
         config: optional overrides (used by tests to point at a temp database
-            and flip TESTING on). 
+            and flip TESTING on).
     """
     app = Flask(__name__)
     app.config.from_mapping(
@@ -40,7 +40,7 @@ def _register_routes(app: Flask) -> None:
         return jsonify({"status": "ok"})
 
     from backend.routes.interests import bp as interests_bp
+    from backend.routes.feed import bp as feed_bp
 
     app.register_blueprint(interests_bp)
-
-
+    app.register_blueprint(feed_bp)  # I added the blueprint to feed module

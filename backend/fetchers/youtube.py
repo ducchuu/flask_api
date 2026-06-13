@@ -15,10 +15,11 @@ def fetch_youtube(query: str) -> List[Dict[str, Any]]:
     api_key = os.getenv("YOUTUBE_API_KEY", "")
     headers = {"User-Agent": "PulseAggregator/1.0"}
     
-    search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={query}&type=video&maxResults=10&key={api_key}"
+    search_url = "https://www.googleapis.com/youtube/v3/search"
+    search_params = {"part": "snippet", "q": query, "type": "video", "maxResults": 10, "key": api_key}
     
     try:
-        search_res = requests.get(search_url, headers=headers, timeout=5)
+        search_res = requests.get(search_url, headers=headers, params=search_params, timeout=5)
         if search_res.status_code != 200:
             return []
             
@@ -34,9 +35,10 @@ def fetch_youtube(query: str) -> List[Dict[str, Any]]:
             return []
 
         ids_str = ",".join(video_ids)
-        video_url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id={ids_str}&key={api_key}"
+        video_url = "https://www.googleapis.com/youtube/v3/videos"
+        video_params = {"part": "snippet,contentDetails,statistics", "id": ids_str, "key": api_key}
         
-        video_res = requests.get(video_url, headers=headers, timeout=5)
+        video_res = requests.get(video_url, headers=headers, params=video_params, timeout=5)
         if video_res.status_code != 200:
             return []
             

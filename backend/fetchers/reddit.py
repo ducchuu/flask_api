@@ -11,11 +11,12 @@ def fetch_reddit(query: str) -> List[Dict[str, Any]]:
     fetches from reddit app api and normalizes using normalize_reddit module
     """
 
-    url = f"https://www.reddit.com/search.json?q={query}"
+    url = "https://www.reddit.com/search.json"
     headers = {"User-Agent": "PulseAggregator/1.0"}
+    params = {"q": query}
     
     try:
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers, params=params, timeout=5)
         if response.status_code != 200:
             return []
             
