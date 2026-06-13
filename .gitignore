@@ -9,3 +9,5 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+api_cache.json

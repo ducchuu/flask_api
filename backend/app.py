@@ -42,6 +42,7 @@ def _register_routes(app: Flask) -> None:
     from backend.routes.interests import bp as interests_bp
     from backend.routes.feed import bp as feed_bp
     from backend.routes.stories import bp as stories_bp
+
     from backend.routes.items import bp as items_bp
     
     app.register_blueprint(interests_bp)
