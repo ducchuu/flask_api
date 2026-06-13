@@ -1,0 +1,7 @@
+Flask>=3.0
+python-dotenv>=1.0
+requests>=2.31
+vaderSentiment>=3.3.2
+isodate>=0.6.1
+tldextract>=5.1
+pytest>=8.0
