@@ -2,6 +2,15 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Dict, Any
 
+
+def _fix_iso_z(timestamp: str) -> str:
+    """
+    fixing the issue of datetim not accepting timeformats with Z at the end, but GNews and Youtube sometimes retrieve them
+    """
+    if timestamp.endswith("Z"):
+        return timestamp[:-1] + "+00:00"
+    return timestamp
+
 def normalize_reddit(raw_item: Dict[str, Any]) -> Dict[str, Any]:
     """
     normalizes a raw json Reddit response into the normalized data shape for project framework
@@ -38,7 +47,7 @@ def normalize_youtube(raw_item: Dict[str, Any]) -> Dict[str, Any]:
         "source_name": snippet.get("channelTitle", "unknown"),
         "title": snippet.get("title", ""),
         "text": snippet.get("description", ""),
-        "published_at": snippet.get("publishedAt", ""),
+        "published_at": _fix_iso_z(snippet.get("publishedAt", "")),
         "iso_duration": content_details.get("duration", ""),
         "metrics": {
             "views": int(statistics.get("viewCount", 0)),
@@ -60,7 +69,7 @@ def normalize_gnews(raw_item: Dict[str, Any]) -> Dict[str, Any]:
         "source_name": raw_item.get("source", {}).get("name", "unknown"),
         "title": raw_item.get("title", ""),
         "text": raw_item.get("content", raw_item.get("description", "")),
-        "published_at": raw_item.get("publishedAt", ""),
+        "published_at": _fix_iso_z(raw_item.get("publishedAt", "")),
         "metrics": {
             "shares": 0 # unfortunateluy GNews free tier lacks share metrics so it will be default 0
         }
