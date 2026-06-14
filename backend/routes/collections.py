@@ -1,7 +1,7 @@
 """CRUD endpoints for collections and their saved items.
 
 A collection is a named bucket belonging to one user. Items are linked to
-collections through the ``collection_items`` join table, so the same item can
+collections through the ``collection_items`` join table, so  same item can
 sit in several collections without being duplicated.
 """
 from typing import Any
@@ -16,7 +16,7 @@ bp = Blueprint("collections", __name__, url_prefix="/api/collections")
 
 
 def _owned_collection_or_404(collection_id: int) -> Any:
-    """Fetch a collection owned by the current user, or abort with 404."""
+    """fetch a collection owned by the current user, or 404"""
     row = get_db().execute(
         "SELECT * FROM collections WHERE id = ? AND user_id = ?",
         [collection_id, g.user_id],
@@ -27,7 +27,7 @@ def _owned_collection_or_404(collection_id: int) -> Any:
 
 
 def _collection_items(collection_id: int) -> list[dict[str, Any]]:
-    """Return the items saved in a collection as small summary dicts."""
+    """the items saved in a collection, as small summary dicts"""
     rows = get_db().execute(
         "SELECT i.id, i.title, i.url, i.source_type "
         "FROM collection_items ci JOIN items i ON i.id = ci.item_id "
@@ -60,13 +60,13 @@ def create_collection() -> Any:
         abort(400, description="Field 'name' is required")
 
     db = get_db()
-    cursor = db.execute(
+    cur = db.execute(
         "INSERT INTO collections (user_id, name, description) VALUES (?, ?, ?)",
         [g.user_id, name.strip(), data.get("description")],
     )
     db.commit()
     row = db.execute(
-        "SELECT * FROM collections WHERE id = ?", [cursor.lastrowid]
+        "SELECT * FROM collections WHERE id = ?", [cur.lastrowid]
     ).fetchone()
     return jsonify(Collection.from_row(row).to_dict()), 201
 
@@ -119,15 +119,15 @@ def delete_collection(collection_id: int) -> Any:
 @bp.put("/<int:collection_id>/items/<int:item_id>")
 @require_auth
 def add_item(collection_id: int, item_id: int) -> Any:
-    """Add an item to a collection. Idempotent: adding twice is a no-op."""
+    """Add an item to a collection. Idempotent - adding twice does nothing."""
     _owned_collection_or_404(collection_id)
     db = get_db()
     item = db.execute("SELECT id FROM items WHERE id = ?", [item_id]).fetchone()
     if item is None:
         abort(404, description="Item not found")
 
-    # INSERT OR IGNORE leans on the (collection_id, item_id) primary key to
-    # quietly skip an item that's already saved.
+    # INSERT OR IGNORE needs the (collection_id, item_id) primary key to
+    # skip an item that's already in there
     db.execute(
         "INSERT OR IGNORE INTO collection_items (collection_id, item_id) "
         "VALUES (?, ?)",
@@ -140,14 +140,14 @@ def add_item(collection_id: int, item_id: int) -> Any:
 @bp.delete("/<int:collection_id>/items/<int:item_id>")
 @require_auth
 def remove_item(collection_id: int, item_id: int) -> Any:
-    """Remove an item from a collection."""
+    """remove an item from a collection"""
     _owned_collection_or_404(collection_id)
     db = get_db()
-    cursor = db.execute(
+    cur = db.execute(
         "DELETE FROM collection_items WHERE collection_id = ? AND item_id = ?",
         [collection_id, item_id],
     )
     db.commit()
-    if cursor.rowcount == 0:
+    if cur.rowcount == 0:  # nothing deleted = the pair wasn't there
         abort(404, description="Item is not in this collection")
     return "", 204

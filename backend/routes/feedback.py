@@ -48,13 +48,13 @@ def create_feedback() -> Any:
     if db.execute("SELECT 1 FROM items WHERE id = ?", [item_id]).fetchone() is None:
         abort(404, description="Item not found")
 
-    cursor = db.execute(
+    cur = db.execute(
         "INSERT INTO feedback (user_id, item_id, kind) VALUES (?, ?, ?)",
         [g.user_id, item_id, kind],
     )
     db.commit()
     row = db.execute(
-        "SELECT * FROM feedback WHERE id = ?", [cursor.lastrowid]
+        "SELECT * FROM feedback WHERE id = ?", [cur.lastrowid]
     ).fetchone()
     return jsonify(Feedback.from_row(row).to_dict()), 201
 

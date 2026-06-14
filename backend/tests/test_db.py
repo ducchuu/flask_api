@@ -33,7 +33,7 @@ class TestDatabaseInit:
         assert row[0] == 1
 
     def test_second_init_is_idempotent(self, app) -> None:
-        """Calling init_db a second time should lead to duplicate tables."""
+        """running init_db again shouldn't duplicate or drop anything"""
         with app.app_context():
             from backend.db import init_db
             init_db()  
