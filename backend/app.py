@@ -13,12 +13,12 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
 
     Args:
         config: optional overrides (used by tests to point at a temp database
-            and flip TESTING on).
+            and flip TESTING on)
     """
     app = Flask(__name__)
     app.config.from_mapping(
         DATABASE=os.environ.get("DATABASE", "pulse.db"),
-        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-change-me"),
+        SECRET_KEY=os.environ.get("SECRET_KEY", "somesortasecret"),
     )
     if config:
         app.config.update(config)
@@ -33,29 +33,31 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
 
 
 def _register_routes(app: Flask) -> None:
-    """Attach the health check and all feature blueprints."""
+    """attach health check and all feature blueprints."""
 
     @app.get("/api/health")
     def health() -> Any:
-        """Liveness probe used by the frontend and by smoke tests."""
+        """liveness probe used by the frontend and by smoke tests"""
         return jsonify({"status": "ok"})
 
     from backend.routes.interests import bp as interests_bp
     from backend.routes.feed import bp as feed_bp
     from backend.routes.stories import bp as stories_bp
     from backend.routes.collections import bp as collections_bp
-
+    from backend.routes.feedback import bp as feedback_bp
+    #all the blueprints imported here for simplicity and then directly registered
     app.register_blueprint(interests_bp)
     app.register_blueprint(feed_bp)  # I added the blueprint to feed module
     app.register_blueprint(stories_bp)
     app.register_blueprint(collections_bp)
+    app.register_blueprint(feedback_bp)
 
 
 def _register_error_handlers(app: Flask) -> None:
-    """Return every error as a consistent JSON envelope.
+    """return every error as a consistent JSON envelope
 
     Shape: {"error": {"code": <int>, "message": <str>}}, so the frontend gets
-    JSON for 4xx/5xx responses instead of Flask's default HTML error pages.
+    JSON for 4xx/5xx responses instead of Flask's default HTML error pages, easier for debugging in the future
     """
 
     @app.errorhandler(HTTPException)
