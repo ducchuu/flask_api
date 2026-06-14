@@ -1,25 +1,10 @@
 """API tests for user endpoints.
-
-
-Coverage:
-    POST /api/users      — success, missing fields, duplicate, empty strings,
-                           whitespace username, response structure
-    POST /api/tokens     — success, wrong password, unknown user, missing fields,
-                           case sensitivity, response structure
-    GET  /api/users/me   — success, no token, invalid token, no password_hash,
-                           response structure, correct user scoping
-    PATCH /api/users/me  — each allowed field, multiple fields, sensitive fields
-                           ignored, persistence, 409, empty body, no token,
-                           partial update keeps other fields
 """
 
 import pytest
-from conftest import auth_headers, make_user
+from backend.tests.conftest import auth_headers, make_user
 
 
-# ---------------------------------------------------------------------------
-# POST /api/users — register
-# ---------------------------------------------------------------------------
 
 class TestRegister:
     """Tests for POST /api/users."""
@@ -117,11 +102,6 @@ class TestRegister:
                          json={"username": "bob", "password": "p"})
         assert r1.get_json()["user"]["id"] != r2.get_json()["user"]["id"]
 
-
-# ---------------------------------------------------------------------------
-# POST /api/tokens — login
-# ---------------------------------------------------------------------------
-
 class TestLogin:
     """Tests for POST /api/tokens."""
 
@@ -207,10 +187,6 @@ class TestLogin:
         assert r.get_json()["user"]["username"] == "bob"
 
 
-# ---------------------------------------------------------------------------
-# GET /api/users/me
-# ---------------------------------------------------------------------------
-
 class TestGetMe:
     """Tests for GET /api/users/me."""
 
@@ -269,11 +245,6 @@ class TestGetMe:
         r_b = client.get("/api/users/me", headers=auth_headers(app, id_b))
         assert r_a.get_json()["user"]["username"] == "user_aa"
         assert r_b.get_json()["user"]["username"] == "user_bb"
-
-
-# ---------------------------------------------------------------------------
-# PATCH /api/users/me
-# ---------------------------------------------------------------------------
 
 class TestUpdateMe:
     """Tests for PATCH /api/users/me."""

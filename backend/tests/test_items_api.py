@@ -1,28 +1,13 @@
 """Tests for GET /api/items/stats and upstream error handling.
-
-TDD commit order:
-    1. test: add failing tests for /api/items/stats and 429/502 handling
-    2. feat: implement /api/items/stats and upstream error handling
-
-Coverage:
-    GET /api/items/stats — success per by= value, empty result,
-                           400 on missing by=, 400 on invalid by=,
-                           401 unauthenticated, response structure,
-                           total field correctness
-    Upstream errors      — RateLimitError → 429, UpstreamServerError → 502,
-                           UpstreamParseError → 502, partial failure handling,
-                           error envelope structure
 """
 
 import json
 import pytest
 from unittest.mock import patch
-from conftest import auth_headers, make_user
+from backend.tests.conftest import auth_headers, make_user
 
 
-# ---------------------------------------------------------------------------
-# Helpers — seed the database with known items and interests
-# ---------------------------------------------------------------------------
+
 
 def seed_items(db, items: list[dict]) -> None:
     """Insert test items directly into the database."""
@@ -50,10 +35,6 @@ def seed_interest(db, user_id: int, name: str, keywords: list[str]) -> None:
     )
     db.commit()
 
-
-# ---------------------------------------------------------------------------
-# GET /api/items/stats?by=source_type
-# ---------------------------------------------------------------------------
 
 class TestStatsBySourceType:
     """Tests for by=source_type."""
@@ -119,10 +100,6 @@ class TestStatsBySourceType:
         assert data["total"] == 0
 
 
-# ---------------------------------------------------------------------------
-# GET /api/items/stats?by=day
-# ---------------------------------------------------------------------------
-
 class TestStatsByDay:
     """Tests for by=day."""
 
@@ -179,10 +156,6 @@ class TestStatsByDay:
         assert data["stats"] == []
         assert data["total"] == 0
 
-
-# ---------------------------------------------------------------------------
-# GET /api/items/stats?by=interest
-# ---------------------------------------------------------------------------
 
 class TestStatsByInterest:
     """Tests for by=interest."""
@@ -249,9 +222,6 @@ class TestStatsByInterest:
         assert "Sports" not in interest_names
 
 
-# ---------------------------------------------------------------------------
-# Validation — 400 and 401
-# ---------------------------------------------------------------------------
 
 class TestStatsValidation:
     """Tests for validation errors."""
@@ -293,10 +263,6 @@ class TestStatsValidation:
         assert "code" in error
         assert "message" in error
 
-
-# ---------------------------------------------------------------------------
-# Upstream error handling — 429 and 502
-# ---------------------------------------------------------------------------
 
 class TestUpstreamErrors:
     """Tests for 429 and 502 responses from upstream failures."""
@@ -391,10 +357,6 @@ class TestUpstreamErrors:
         assert r.status_code == 200
 
 
-# ---------------------------------------------------------------------------
-# Pipeline partial failure
-# ---------------------------------------------------------------------------
-
 class TestPipelinePartialFailure:
     """Tests that one failing source does not crash the whole pipeline."""
 
@@ -423,10 +385,6 @@ class TestPipelinePartialFailure:
         assert r.status_code in (200, 502)
         assert r.status_code != 500
 
-
-# ---------------------------------------------------------------------------
-# Response field types
-# ---------------------------------------------------------------------------
 
 class TestResponseFieldTypes:
     """Tests that response fields have the correct types."""
@@ -474,10 +432,6 @@ class TestResponseFieldTypes:
             assert len(entry["day"]) == 10  # YYYY-MM-DD
 
 
-# ---------------------------------------------------------------------------
-# Window boundary — by=day
-# ---------------------------------------------------------------------------
-
 class TestDayWindow:
     """Tests that the 30-day window is applied correctly."""
 
@@ -508,9 +462,6 @@ class TestDayWindow:
         assert "2026-06-01" in days
 
 
-# ---------------------------------------------------------------------------
-# Multiple interests
-# ---------------------------------------------------------------------------
 
 class TestMultipleInterests:
     """Tests for users with more than one interest."""
@@ -561,9 +512,6 @@ class TestMultipleInterests:
         assert data["total"] == sum(e["count"] for e in data["stats"])
 
 
-# ---------------------------------------------------------------------------
-# User isolation
-# ---------------------------------------------------------------------------
 
 class TestUserIsolation:
     """Tests that stats are always scoped to the authenticated user."""
@@ -594,11 +542,6 @@ class TestUserIsolation:
         names_b = [e["interest"] for e in data_b["stats"]]
         assert "AI" in names_a and "Sports" not in names_a
         assert "Sports" in names_b and "AI" not in names_b
-
-
-# ---------------------------------------------------------------------------
-# Case sensitivity and edge cases
-# ---------------------------------------------------------------------------
 
 class TestEdgeCases:
     """Edge case tests for the stats endpoint."""

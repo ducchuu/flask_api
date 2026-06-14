@@ -1,10 +1,5 @@
 """Unit tests for backend/auth.py.
 
-Coverage:
-    hash_password / verify_password — hashing, salt, correct/wrong/empty
-    generate_token / verify_token   — valid, tampered, invalid, two users
-    @require_auth                   — missing header, bad token, valid token,
-                                      g.user_id and g.current_user both set
 """
 
 import pytest
@@ -15,7 +10,7 @@ from backend.auth import (
     verify_password,
     verify_token,
 )
-from conftest import auth_headers, make_user
+from backend.tests.conftest import auth_headers, make_user
 
 
 # ---------------------------------------------------------------------------
