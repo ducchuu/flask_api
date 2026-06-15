@@ -11,7 +11,7 @@ import sqlite3
 
 
 def _load_keywords(raw: Optional[str]) -> list[str]:
-    """Decode a keywords_json column into a list, tolerating null/garbage."""
+    """decode a keywords_json column into a list, shrugging off null/garbage"""
     if not raw:
         return []
     try:
@@ -45,7 +45,7 @@ class Interest:
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Interest":
-        """Build an Interest from a database row."""
+        """build an Interest off a db row"""
         return cls(
             id=row["id"],
             user_id=row["user_id"],
@@ -72,7 +72,7 @@ class Collection:
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Collection":
-        """Build a Collection from a database row."""
+        """build a Collection from a row"""
         return cls(
             id=row["id"],
             user_id=row["user_id"],
@@ -82,7 +82,7 @@ class Collection:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialise to a JSON-friendly dict."""
+        """json-friendly dict for the response"""
         return {
             "id": self.id,
             "name": self.name,
@@ -113,7 +113,7 @@ class Feedback:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialise to a JSON-friendly dict."""
+        """json-friendly dict (no user_id, that stays server side)"""
         return {
             "id": self.id,
             "item_id": self.item_id,

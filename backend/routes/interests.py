@@ -1,7 +1,7 @@
 """CRUD endpoints for a user's interests (the topics they follow).
 
 Every route is scoped to the authenticated user, so one user can never see or
-change another user's interests. Interests are stored with their keywords as a
+change another user's interests (obviously). Interests are stored with their keywords as a
 JSON-encoded list in the ``keywords_json`` column.
 """
 import json
@@ -17,9 +17,9 @@ bp = Blueprint("interests", __name__, url_prefix="/api/interests")
 
 
 def _parse_payload(data: Any) -> tuple[str, str, float]:
-    """Validate an incoming interest body and return (name, keywords_json, weight).
+    """validate an interest body and hand back (name, keywords_json, weight).
 
-    Aborts with 400 if anything is missing or the wrong type.
+    Anything missing or the wrong type -> 400.
     """
     if not isinstance(data, dict):
         abort(400, description="Request body must be a JSON object")
@@ -33,6 +33,7 @@ def _parse_payload(data: Any) -> tuple[str, str, float]:
         abort(400, description="Field 'keywords' must be a list")
 
     weight = data.get("weight", 1.0)
+    # bool is a subclass of int, so guard against True/False getting through
     if isinstance(weight, bool) or not isinstance(weight, (int, float)):
         abort(400, description="Field 'weight' must be a number")
 
@@ -40,7 +41,7 @@ def _parse_payload(data: Any) -> tuple[str, str, float]:
 
 
 def _get_owned_or_404(interest_id: int) -> Any:
-    """Fetch an interest belonging to the current user, or abort with 404."""
+    """fetch an interest owned by the current user, or 404"""
     row = get_db().execute(
         "SELECT * FROM interests WHERE id = ? AND user_id = ?",
         [interest_id, g.user_id],
@@ -53,7 +54,7 @@ def _get_owned_or_404(interest_id: int) -> Any:
 @bp.get("")
 @require_auth
 def list_interests() -> Any:
-    """Return all of the current user's interests, newest first."""
+    """all of the current user's interests, newest first"""
     rows = get_db().execute(
         "SELECT * FROM interests WHERE user_id = ? ORDER BY id DESC",
         [g.user_id],
@@ -67,14 +68,15 @@ def create_interest() -> Any:
     """Create a new interest for the current user."""
     name, keywords_json, weight = _parse_payload(request.get_json(silent=True))
     db = get_db()
-    cursor = db.execute(
+    cur = db.execute(
         "INSERT INTO interests (user_id, name, keywords_json, weight) "
         "VALUES (?, ?, ?, ?)",
         [g.user_id, name, keywords_json, weight],
     )
     db.commit()
+    # read it back so the response includes the id + created_at the db filled in
     row = db.execute(
-        "SELECT * FROM interests WHERE id = ?", [cursor.lastrowid]
+        "SELECT * FROM interests WHERE id = ?", [cur.lastrowid]
     ).fetchone()
     return jsonify(Interest.from_row(row).to_dict()), 201
 
@@ -90,7 +92,7 @@ def get_interest(interest_id: int) -> Any:
 @bp.put("/<int:interest_id>")
 @require_auth
 def update_interest(interest_id: int) -> Any:
-    """Replace an interest's fields."""
+    """Replace an interest's fields (404 first if it isn't theirs)."""
     _get_owned_or_404(interest_id)
     name, keywords_json, weight = _parse_payload(request.get_json(silent=True))
     db = get_db()

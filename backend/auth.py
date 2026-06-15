@@ -25,25 +25,25 @@ def _serializer() -> URLSafeTimedSerializer:
 
 
 def generate_token(user_id: int) -> str:
-    """Create a signed token that encodes the given user id."""
+    """make a signed token that carries the user id"""
     return _serializer().dumps({"user_id": user_id})
 
 
 def verify_token(token: str, max_age: int = TOKEN_MAX_AGE_SECONDS) -> Optional[int]:
-    """Return the user id inside a valid token, or None if it is bad or expired."""
+    """Return the user id inside a valid token, or None if it's bad/expired."""
     try:
-        data = _serializer().loads(token, max_age=max_age)
+        payload = _serializer().loads(token, max_age=max_age)
     except (BadSignature, SignatureExpired):
         return None
-    return data.get("user_id")
+    return payload.get("user_id")
 
 
 def _token_from_header() -> Optional[str]:
-    """Pull the bearer token out of the Authorization header, if present."""
-    header = request.headers.get("Authorization", "")
+    """grab the bearer token out of the Authorization header if it's there"""
+    raw = request.headers.get("Authorization", "")
     prefix = "Bearer "
-    if header.startswith(prefix):
-        return header[len(prefix):].strip()
+    if raw.startswith(prefix):
+        return raw[len(prefix):].strip()
     return None
 
 
