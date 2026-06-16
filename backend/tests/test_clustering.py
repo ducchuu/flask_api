@@ -117,3 +117,15 @@ class TestClusterItems:
         stories = clustering.cluster_items(items, threshold=0.3)
         grouped_ids = [it["id"] for s in stories for it in s["items"]]
         assert sorted(grouped_ids) == ["a", "b", "c"]
+
+    def test_merged_cluster_keywords_grow(self) -> None:
+        """a cluster's keyword set expands with the new words a joined item brings"""
+        items = [
+            make_item("a", ["python", "flask", "web"]),
+            make_item("b", ["python", "flask", "api"]),
+        ]
+        stories = clustering.cluster_items(items, threshold=0.3)
+        assert len(stories) == 1
+        # words unique to each item ('web' and 'api') are both kept after merging
+        keywords = {k.lower() for k in stories[0]["keywords"]}
+        assert {"web", "api"} <= keywords

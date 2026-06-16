@@ -118,6 +118,11 @@ class TestPopularity:
         """Missing engagement metrics score 0.0 without error."""
         assert scoring.popularity({}, "news") == 0.0
 
+    def test_unknown_source_type(self) -> None:
+        """an unrecognised source_type has no engagement metric, so it scores 0.0"""
+        # metrics are present but irrelevant for an unknown type
+        assert scoring.popularity({"views": 1000}, "podcast") == 0.0
+
 
 class TestSourcePref:
     """Tests for the user's per-source-type preference component."""

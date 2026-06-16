@@ -136,6 +136,13 @@ class TestCredibilityTier:
         """A trusted news domain maps to high."""
         assert enrich.credibility_tier("news", "bbc.com") == "high"
 
+    def test_news_full_url_reduced_to_domain(self) -> None:
+        """a full news url is cleaned down to its registered domain before lookup"""
+        # proves the tldextract-based normalization, not just bare-domain matching
+        assert enrich.credibility_tier(
+            "news", "https://www.bbc.com/news/world-12345"
+        ) == "high"
+
     def test_known_medium_news(self) -> None:
         """A second-tier news domain maps to medium."""
         assert enrich.credibility_tier("news", "techcrunch.com") == "medium"
