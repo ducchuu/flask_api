@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS items (
     sentiment_label TEXT,
     keywords_json   TEXT,
     credibility_tier TEXT,
+    relevance_score REAL,            -- pipeline relevance score in [0, 1]
     story_id        INTEGER,
     fetched_at      TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (story_id) REFERENCES stories (id) ON DELETE SET NULL

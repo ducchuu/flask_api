@@ -1,3 +1,4 @@
+"""Normalize raw GNews, YouTube, and Reddit responses into one common item shape."""
 import hashlib
 from datetime import datetime, timezone
 from typing import Dict, Any

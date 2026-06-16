@@ -1,3 +1,4 @@
+"""YouTube fetcher — search videos and normalize them via the YouTube Data API v3."""
 import os
 import requests
 from typing import List, Dict, Any
