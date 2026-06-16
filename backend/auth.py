@@ -1,68 +1,147 @@
-"""Stateless authentication helpers.
+"""Authentication helpers for Pulse.
 
-Login is stateless: instead of a server-side session we hand the client a
-signed, expiring token. Every protected request carries it in the
-``Authorization: Bearer <token>`` header, and we verify the signature on the
-way in. Nothing about "who is logged in" is stored on the server.
+Covers password hashing/verification, signed token generation and
+verification, and the @require_auth decorator that protects routes.
 
-This module only provides the token plumbing and the ``require_auth``
-decorator. The actual /api/users (register) and /api/tokens (login) endpoints
-live with the auth-users feature.
+Libraries (both ship with Flask — no new dependencies):
+    werkzeug.security   password hashing via pbkdf2
+    itsdangerous        URL-safe timed token signing
 """
-import functools
-from typing import Any, Callable, Optional
 
-from flask import current_app, g, request
+from functools import wraps
+from typing import Any, Callable
+
+from flask import g, jsonify, request, current_app
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from werkzeug.security import check_password_hash, generate_password_hash
 
-# Tokens expire after a day so leaked tokens aren't too bad
-TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24
 
+# ---------------------------------------------------------------------------
+# Password helpers
+# ---------------------------------------------------------------------------
+
+def hash_password(plain: str) -> str:
+    """Hash a plain-text password with werkzeug's pbkdf2 hasher.
+
+    Args:
+        plain: The raw password supplied by the user.
+
+    Returns:
+        A hashed string safe to store in the database.
+    """
+    return generate_password_hash(plain)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    """Verify a plain-text password against a stored hash.
+
+    Args:
+        plain:  The raw password to check.
+        hashed: The stored hash from the database.
+
+    Returns:
+        True if the password matches, False otherwise.
+    """
+    return check_password_hash(hashed, plain)
+
+
+# ---------------------------------------------------------------------------
+# Token helpers
+# ---------------------------------------------------------------------------
 
 def _serializer() -> URLSafeTimedSerializer:
-    """Build a serializer bound to the app's secret key."""
-    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="pulse-auth")
+    """Return a serializer bound to the current app's SECRET_KEY."""
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
 
 
 def generate_token(user_id: int) -> str:
-    """make a signed token that carries the user id"""
-    return _serializer().dumps({"user_id": user_id})
+    """Create a signed, expiring token for a given user.
 
+    Uses itsdangerous URLSafeTimedSerializer — the payload is signed with
+    SECRET_KEY and expires after 1 hour. No token state is stored server-side.
 
-def verify_token(token: str, max_age: int = TOKEN_MAX_AGE_SECONDS) -> Optional[int]:
-    """Return the user id inside a valid token, or None if it's bad/expired."""
-    try:
-        payload = _serializer().loads(token, max_age=max_age)
-    except (BadSignature, SignatureExpired):
-        return None
-    return payload.get("user_id")
+    Args:
+        user_id: The primary key of the authenticated user.
 
-
-def _token_from_header() -> Optional[str]:
-    """grab the bearer token out of the Authorization header if it's there"""
-    raw = request.headers.get("Authorization", "")
-    prefix = "Bearer "
-    if raw.startswith(prefix):
-        return raw[len(prefix):].strip()
-    return None
-
-
-def require_auth(view: Callable[..., Any]) -> Callable[..., Any]:
-    """Reject requests without a valid bearer token.
-
-    On success the authenticated user id is stashed on ``g.user_id`` so the
-    wrapped view can read it.
+    Returns:
+        A signed token string to return to the client.
     """
+    return _serializer().dumps({"user_id": user_id}, salt="auth-token")
 
-    @functools.wraps(view)
-    def wrapped(*args: Any, **kwargs: Any) -> Any:
-        from flask import abort
 
-        token = _token_from_header()
-        user_id = verify_token(token) if token else None
+def verify_token(token: str) -> int | None:
+    """Decode and validate a signed token.
+
+    Args:
+        token: The token string from the Authorization header.
+
+    Returns:
+        The user_id integer if the token is valid and unexpired,
+        None if it is expired or has been tampered with.
+    """
+    try:
+        data = _serializer().loads(token, salt="auth-token", max_age=3600)
+        return int(data["user_id"])
+    except SignatureExpired:
+        return None
+    except BadSignature:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# @require_auth decorator
+# ---------------------------------------------------------------------------
+
+def require_auth(f: Callable) -> Callable:
+    """Protect a route by requiring a valid Bearer token.
+
+    Reads the Authorization header, verifies the token, fetches the user
+    from the database, and stores both g.user_id (int) and g.current_user
+    (User model) for use by the route.
+
+    Sets:
+        g.user_id       — integer user id, used by teammates' routes
+        g.current_user  — User model instance, used by users routes
+
+    Returns:
+        401 if the token is missing, invalid, or expired.
+        404 if the token is valid but the user no longer exists.
+    """
+    @wraps(f)
+    def decorated(*args: Any, **kwargs: Any) -> Any:
+        from backend.db import get_db
+        from backend.models import User
+
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"error": {
+                "code": "UNAUTHORIZED",
+                "message": "Missing or invalid Authorization header",
+            }}), 401
+
+        token = auth_header.split(" ", 1)[1]
+        user_id = verify_token(token)
+
         if user_id is None:
-            abort(401, description="Missing or invalid authentication token")
-        g.user_id = user_id
-        return view(*args, **kwargs)
+            return jsonify({"error": {
+                "code": "UNAUTHORIZED",
+                "message": "Token is invalid or expired",
+            }}), 401
 
-    return wrapped
+        row = get_db().execute(
+            "SELECT * FROM users WHERE id = ?", [user_id]
+        ).fetchone()
+
+        if row is None:
+            return jsonify({"error": {
+                "code": "NOT_FOUND",
+                "message": "User not found",
+            }}), 404
+
+        # Set both so our routes and teammates' routes both work
+        g.user_id = row["id"]
+        g.current_user = User.from_row(row)
+
+        return f(*args, **kwargs)
+
+    return decorated

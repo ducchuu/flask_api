@@ -43,12 +43,17 @@ def _register_routes(app: Flask) -> None:
     from backend.routes.interests import bp as interests_bp
     from backend.routes.feed import bp as feed_bp
     from backend.routes.stories import bp as stories_bp
+    from backend.routes.users import bp as users_bp
+    from backend.routes.items import bp as items_bp
     from backend.routes.collections import bp as collections_bp
     from backend.routes.feedback import bp as feedback_bp
-    #all the blueprints imported here for simplicity and then directly registered
+
+    # all the blueprints imported here for simplicity and then directly registered
     app.register_blueprint(interests_bp)
     app.register_blueprint(feed_bp)  # I added the blueprint to feed module
     app.register_blueprint(stories_bp)
+    app.register_blueprint(users_bp)
+    app.register_blueprint(items_bp)
     app.register_blueprint(collections_bp)
     app.register_blueprint(feedback_bp)
 

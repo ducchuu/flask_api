@@ -1,7 +1,7 @@
 """Domain data structures for the entities owned by the CRUD layer.
 
 Each model knows how to build itself from a database row and how to turn
-itself back into a plain dict for JSON responses. 
+itself back into a plain dict for JSON responses.
 """
 import json
 from dataclasses import dataclass
@@ -31,6 +31,49 @@ def _load_metrics(raw: Optional[str]) -> dict[str, Any]:
         return {}
     return value if isinstance(value, dict) else {}
 
+@dataclass
+class User:
+    """An authenticated user of the Pulse platform."""
+
+    id: int
+    username: str
+    password_hash: str
+    weights_json: Optional[str]
+    source_prefs_json: Optional[str]
+    created_at: str
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "User":
+        """Build a User from a database row.
+
+        Args:
+            row: A sqlite3.Row from the users table.
+
+        Returns:
+            A User dataclass instance.
+        """
+        return cls(
+            id=row["id"],
+            username=row["username"],
+            password_hash=row["password_hash"],
+            weights_json=row["weights_json"],
+            source_prefs_json=row["source_prefs_json"],
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a JSON-friendly dict.
+
+        password_hash is intentionally excluded — it must never be
+        sent to the client.
+        """
+        return {
+            "id": self.id,
+            "username": self.username,
+            "weights_json": self.weights_json,
+            "source_prefs_json": self.source_prefs_json,
+            "created_at": self.created_at,
+        }
 
 @dataclass
 class Interest:
@@ -57,7 +100,13 @@ class Interest:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-friendly dict (user_id stays server-side)."""
-        return { "id": self.id, "name": self.name, "keywords": self.keywords, "weight": self.weight, "created_at": self.created_at}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "keywords": self.keywords,
+            "weight": self.weight,
+            "created_at": self.created_at,
+        }
 
 
 @dataclass
@@ -198,6 +247,21 @@ class Item:
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-friendly dict."""
         return {
+            "id": self.id,
+            "source_type": self.source_type,
+            "source_name": self.source_name,
+            "url": self.url,
+            "title": self.title,
+            "summary": self.summary,
+            "author": self.author,
+            "published_at": self.published_at,
+            "metrics": self.metrics,
+            "read_time_min": self.read_time_min,
+            "sentiment_score": self.sentiment_score,
+            "sentiment_label": self.sentiment_label,
+            "keywords": self.keywords,
+            "credibility_tier": self.credibility_tier,
+            "story_id": self.story_id,
             "id": self.id,
             "source_type": self.source_type,
             "source_name": self.source_name,
