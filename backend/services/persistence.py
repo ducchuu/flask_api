@@ -93,5 +93,5 @@ def save_stories(stories: list[dict]) -> dict[str, int]:
             _insert_item(db, story_id, item)
             item_count += 1
 
-
     db.commit()
+    return {"stories": story_count, "items": item_count}
