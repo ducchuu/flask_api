@@ -42,6 +42,7 @@ def _register_routes(app: Flask) -> None:
 
     @app.get("/")
     def index() -> Any:
+        """Placeholder home route so the root URL returns 200 until the frontend lands."""
         return "Test home page URL good", 200 # added just for a test, instaed of 404 error on home page because of no frontend implementation
 
     from backend.routes.interests import bp as interests_bp
@@ -71,12 +72,14 @@ def _register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(HTTPException)
     def handle_http_exception(exc: HTTPException) -> Any:
+        """Render raised HTTP errors (4xx/5xx) as the standard JSON error envelope."""
         response = jsonify({"error": {"code": exc.code, "message": exc.description}})
         response.status_code = exc.code or 500
         return response
 
     @app.errorhandler(Exception)
     def handle_unexpected(exc: Exception) -> Any:
+        """Catch any uncaught non-HTTP exception and return a generic 500 JSON error."""
         if isinstance(exc, HTTPException):
             raise exc
         response = jsonify({"error": {"code": 500, "message": "Internal server error"}})

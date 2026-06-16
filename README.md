@@ -75,7 +75,7 @@ Visiting http://127.0.0.1:5000 in your browser will return "Test home page URL g
 
 ## Running the tests
 
-Expected 324 tests to run and pass.
+Expected 325 tests to run and pass.
 
 ```bash
 pytest backend/

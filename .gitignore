@@ -9,3 +9,6 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+# runtime API response cache
+api_cache.json
