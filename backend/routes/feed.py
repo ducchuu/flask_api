@@ -44,8 +44,9 @@ def get_items() -> Any:
     if days is not None and days <= 0:
         days = None
 
-    # user_id is set by @require_auth from the bearer token
+    # user_id and the User model are set by @require_auth from the bearer token
     user_id = g.user_id
+    user = g.current_user
 
     try:
         feed = generate_feed(
@@ -54,6 +55,9 @@ def get_items() -> Any:
             sort_by=sort,
             search_query=query,
             freshness_days=days,
+            # the user's tuned scoring preferences, set via PATCH /api/users/me
+            weights_json=user.weights_json,
+            source_prefs_json=user.source_prefs_json,
         )
         return jsonify(feed), 200
     except Exception as e:

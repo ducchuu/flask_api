@@ -1,6 +1,11 @@
 import pytest
 from unittest.mock import patch, call
-from backend.services.pipeline import generate_feed
+from backend.services.pipeline import (
+    generate_feed,
+    resolve_weights,
+    DEFAULT_WEIGHTS,
+    DEFAULT_SOURCE_PREFS,
+)
 
 
 def _make_raw_item(source_type="news", source_name="Tech Site", title="AI News",
@@ -229,3 +234,72 @@ def test_video_items_use_duration_for_read_time(mock_fetch):
     item = stories[0]["items"][0]
     # PT10M30S = 10.5 minutes, rounded up = 11
     assert item["read_time"] == 11
+
+
+class TestResolveWeights:
+    """The user-tunable weights layer that feeds score_item."""
+
+    def test_none_falls_back_to_defaults(self):
+        """No stored prefs -> the built-in defaults are used verbatim."""
+        weights = resolve_weights(None, None)
+        for key, value in DEFAULT_WEIGHTS.items():
+            assert weights[key] == value
+        assert weights["source_prefs"] == DEFAULT_SOURCE_PREFS
+
+    def test_user_weights_override_defaults(self):
+        """A valid weights_json overrides only the keys it provides."""
+        weights = resolve_weights('{"interest": 0.9, "recency": 0.05}', None)
+        assert weights["interest"] == 0.9
+        assert weights["recency"] == 0.05
+        # untouched keys keep their defaults
+        assert weights["popularity"] == DEFAULT_WEIGHTS["popularity"]
+
+    def test_user_source_prefs_override_defaults(self):
+        """A valid source_prefs_json overrides only the keys it provides."""
+        weights = resolve_weights(None, '{"video": 0.95}')
+        assert weights["source_prefs"]["video"] == 0.95
+        assert weights["source_prefs"]["news"] == DEFAULT_SOURCE_PREFS["news"]
+
+    def test_malformed_json_is_ignored(self):
+        """Garbage JSON never breaks scoring — defaults stand."""
+        assert resolve_weights("not json", "{also bad") == resolve_weights(None, None)
+
+    def test_unknown_and_bad_values_are_rejected(self):
+        """Unknown keys, negatives, and non-numbers are dropped."""
+        weights = resolve_weights(
+            '{"interest": -1, "bogus": 5, "recency": "high", "popularity": 0.6}',
+            None,
+        )
+        assert weights["interest"] == DEFAULT_WEIGHTS["interest"]  # negative rejected
+        assert "bogus" not in weights                              # unknown rejected
+        assert weights["recency"] == DEFAULT_WEIGHTS["recency"]    # non-number rejected
+        assert weights["popularity"] == 0.6                        # valid kept
+
+
+@patch('backend.services.pipeline.fetch_with_cache')
+def test_user_weights_change_relevance_score(mock_fetch):
+    """End-to-end: different stored weights produce different scores.
+
+    A news item with high popularity should score higher when the user
+    weights popularity heavily than when they zero it out — proving the
+    tuning actually reaches the scorer.
+    """
+    # fresh item per call — the pipeline enriches items in place, so the
+    # two runs must not share the same dict object
+    mock_fetch.side_effect = lambda *a, **k: [
+        _make_raw_item(text="spacecraft rocket launch orbit",
+                       metrics={"shares": 90000})
+    ]
+
+    pop_heavy = generate_feed(
+        user_id=1, source_filter="news", search_query="test",
+        weights_json='{"interest": 0.0, "recency": 0.0, "popularity": 1.0, "source": 0.0}',
+    )
+    pop_zero = generate_feed(
+        user_id=1, source_filter="news", search_query="test",
+        weights_json='{"interest": 0.0, "recency": 0.0, "popularity": 0.0, "source": 1.0}',
+    )
+
+    score_heavy = pop_heavy[0]["items"][0]["relevance_score"]
+    score_zero = pop_zero[0]["items"][0]["relevance_score"]
+    assert score_heavy > score_zero
