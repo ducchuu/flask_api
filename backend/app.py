@@ -40,6 +40,10 @@ def _register_routes(app: Flask) -> None:
         """liveness probe used by the frontend and by smoke tests"""
         return jsonify({"status": "ok"})
 
+    @app.get("/")
+    def index() -> Any:
+        return "Test home page URL good", 200 # added just for a test, instaed of 404 error on home page because of no frontend implementation
+
     from backend.routes.interests import bp as interests_bp
     from backend.routes.feed import bp as feed_bp
     from backend.routes.stories import bp as stories_bp

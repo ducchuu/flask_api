@@ -30,14 +30,14 @@ def _published_bounds(items: list[dict]) -> tuple[Optional[str], Optional[str]]:
     return min(dates), max(dates)
 
 
-def _insert_item(db: sqlite3.Connection, story_id: int, item: dict) -> None:
+def _insert_item(db: sqlite3.Connection, story_id: Optional[int], item: dict) -> None:
     """Write one enriched item row linked to its parent story.
     Maps the pipeline's in-memory field names (read_time, sentiment,
     credibility) onto the matching columns and stores list/dict fields as json.
     """
 
     db.execute(
-        "INSERT INTO items ("
+        "INSERT OR IGNORE INTO items ("
         "external_id, source_type, source_name, url, title, summary, author, "
         "published_at, metrics_json, read_time_min, sentiment_score, "
         "sentiment_label, keywords_json, credibility_tier, relevance_score, story_id"

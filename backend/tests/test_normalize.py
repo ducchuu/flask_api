@@ -1,48 +1,51 @@
 import pytest
 from typing import Dict, Any
-from backend.fetchers.normalize import normalize_reddit, normalize_youtube, normalize_gnews
+from backend.fetchers.normalize import normalize_lemmy, normalize_youtube, normalize_gnews
 
-def test_normalize_reddit_success() -> None:
-    raw_reddit_data: Dict[str, Any] = {
-        "data": {
-            "id": "5a6b7c",
-            "subreddit": "science",
-            "title": "Quantum computing",
-            "selftext": "Content",
-            "created_utc": 1718063850.0,
-            "ups": 1500,
-            "num_comments": 50
-        }
+def test_normalize_lemmy_valid() -> None:
+    """
+    checks valid lemmy normalization
+    """
+    raw = {
+        "post": {
+            "id": 12345,
+            "name": "Lemmy Test",
+            "body": "This is a body",
+            "ap_id": "https://lemmy.ml/post/12345",
+            "published": "2026-06-16T12:00:00Z"
+        },
+        "creator": {"name": "LemmyUser"},
+        "community": {"name": "technology"}
     }
-    
-    result = normalize_reddit(raw_reddit_data)
-    assert result["source_type"] == "discussion" #matches services/scoring.py
-    assert result["source_name"] == "science"
-    assert result["metrics"]["upvotes"] == 1500
-    assert result["metrics"]["comments"] == 50
-    assert "text" in result
-    assert "published_at" in result
+    res = normalize_lemmy(raw)
+    assert res["id"] == "12345"
+    assert res["external_id"] == "12345"
+    assert res["source_type"] == "lemmy"
+    assert res["source_name"] == "Lemmy/c/technology"
+    assert res["title"] == "Lemmy Test"
+    assert res["text"] == "This is a body"
+    assert res["summary"] == "This is a body"
+    assert res["url"] == "https://lemmy.ml/post/12345"
+    assert res["author"] == "LemmyUser"
+    assert res["published_at"] == "2026-06-16T12:00:00+00:00"
+    assert res["metrics"]["upvotes"] == 0
 
-def test_normalize_reddit_edge_case() -> None:
+def test_normalize_lemmy_missing_fields() -> None:
     """
-    chekcs if the reddit query is missing something, here it is "selftext"
+    checks lemmy missing fields handling
     """
-    raw_reddit_data_missing: Dict[str, Any] = {
-        "data": {
-            "id": "1a2b3d",
-            "subreddit": "science",
-            "title": "Just a title without body",
-            "created_utc": 1718063850.0,
-            "ups": 150,
-            "num_comments": 10
-        }
-    }
-    
-    result = normalize_reddit(raw_reddit_data_missing)
-    assert result["source_type"] == "discussion"
-    assert result.get("text") == ""
+    raw = {}
+    res = normalize_lemmy(raw)
+    assert res["id"] == ""
+    assert res["source_name"] == "Lemmy/c/unknown"
+    assert res["title"] == ""
+    assert res["text"] == ""
+    assert res["metrics"]["upvotes"] == 0
 
 def test_normalize_youtube_success() -> None:
+    """
+    checks youtube success case
+    """
     raw_youtube_data: Dict[str, Any] = {
         "id": "vid123",
         "snippet": {
@@ -129,15 +132,7 @@ def test_normalize_gnews_edge_case() -> None:
     assert result["source_type"] == "news"
     assert result.get("text") == ""
 
-def test_normalize_reddit_malformed() -> None:
-    """
-    checks empty raw item from reddit
-    """
-    raw_reddit_data: Dict[str, Any] = {}
-    result = normalize_reddit(raw_reddit_data)
-    assert result["source_type"] == "discussion"
-    assert result["title"] == ""
-    assert result["text"] == ""
+
 
 def test_normalize_youtube_malformed() -> None:
     """
@@ -159,12 +154,12 @@ def test_normalize_gnews_malformed() -> None:
     assert result["source_type"] == "news"
     assert result["metrics"]["shares"] == 0
 
-def test_normalize_reddit_missing_timestamp() -> None:
-    raw_reddit_data: Dict[str, Any] = {"data": {"created_utc": 0}}
-    result = normalize_reddit(raw_reddit_data)
-    assert result["published_at"] == "1970-01-01T00:00:00+00:00"
+
 
 def test_normalize_youtube_invalid_statistics() -> None:
+    """
+    checks invalid statistics handling
+    """
     raw_youtube_data: Dict[str, Any] = {"statistics": {"viewCount": "notanumber"}}
     try:
         normalize_youtube(raw_youtube_data)
@@ -172,6 +167,9 @@ def test_normalize_youtube_invalid_statistics() -> None:
         pass
 
 def test_normalize_gnews_fallback_text() -> None:
+    """
+    checks gnews fallback to description
+    """
     raw_gnews_data: Dict[str, Any] = {
         "description": "Fallback description",
     }

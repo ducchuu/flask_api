@@ -1,4 +1,3 @@
-"""Normalize raw GNews, YouTube, and Reddit responses into one common item shape."""
 import hashlib
 from datetime import datetime, timezone
 from typing import Dict, Any
@@ -6,31 +5,36 @@ from typing import Dict, Any
 
 def _fix_iso_z(timestamp: str) -> str:
     """
-    fixing the issue of datetim not accepting timeformats with Z at the end, but GNews and Youtube sometimes retrieve them
+    fixing the issue of datetim not accepting timeformats with Z at the end, because GNews and Youtube sometimes retrieve them
     """
     if timestamp.endswith("Z"):
         return timestamp[:-1] + "+00:00"
     return timestamp
 
-def normalize_reddit(raw_item: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_lemmy(raw_item: dict) -> dict:
     """
-    normalizes a raw json Reddit response into the normalized data shape for project framework
+    normalizes a raw lemmy post json dictionary
     """
-    data = raw_item.get("data", {})
-    
-    created_utc = data.get("created_utc", 0)
-    published_at = datetime.fromtimestamp(created_utc, timezone.utc).isoformat()
-    
+    post = raw_item.get("post", {})
+    creator = raw_item.get("creator", {})
+    community = raw_item.get("community", {})
+
+    url = post.get("ap_id", "")
+
     return {
-        "id": data.get("id", ""),
-        "source_type": "discussion",
-        "source_name": data.get("subreddit", "unknown"),
-        "title": data.get("title", ""),
-        "text": data.get("selftext", ""),
-        "published_at": published_at,
+        "id": str(post.get("id", "")),
+        "external_id": str(post.get("id", "")),
+        "source_type": "lemmy",
+        "source_name": f"Lemmy/c/{community.get('name', 'unknown')}",
+        "title": post.get("name", ""),
+        "text": post.get("body", "") or "",
+        "summary": (post.get("body", "") or "")[:300],
+        "url": url,
+        "author": creator.get("name", "Unknown"),
+        "published_at": _fix_iso_z(post.get("published", "")),
         "metrics": {
-            "upvotes": data.get("ups", 0),
-            "comments": data.get("num_comments", 0)
+            "upvotes": 0,
+            "comments": 0
         }
     }
 
@@ -42,12 +46,19 @@ def normalize_youtube(raw_item: Dict[str, Any]) -> Dict[str, Any]:
     statistics = raw_item.get("statistics", {})
     content_details = raw_item.get("contentDetails", {})
     
+    video_id = raw_item.get("id", "")
+    description = snippet.get("description", "")
+
     return {
-        "id": raw_item.get("id", ""),
+        "id": video_id,
+        "external_id": video_id,
         "source_type": "video",
         "source_name": snippet.get("channelTitle", "unknown"),
+        "url": f"https://www.youtube.com/watch?v={video_id}" if video_id else None,
         "title": snippet.get("title", ""),
-        "text": snippet.get("description", ""),
+        "text": description,
+        "summary": description[:300] if description else None,
+        "author": snippet.get("channelTitle"),
         "published_at": _fix_iso_z(snippet.get("publishedAt", "")),
         "iso_duration": content_details.get("duration", ""),
         "metrics": {
@@ -66,12 +77,16 @@ def normalize_gnews(raw_item: Dict[str, Any]) -> Dict[str, Any]:
     
     return {
         "id": item_id,
+        "external_id": item_id,
         "source_type": "news",
         "source_name": raw_item.get("source", {}).get("name", "unknown"),
+        "url": url or None,
         "title": raw_item.get("title", ""),
         "text": raw_item.get("content", raw_item.get("description", "")),
+        "summary": raw_item.get("description", ""),
+        "author": raw_item.get("author"),
         "published_at": _fix_iso_z(raw_item.get("publishedAt", "")),
         "metrics": {
-            "shares": 0 # unfortunateluy GNews free tier lacks share metrics so it will be default 0
+            "shares": 0 # unfortunately GNews free tier lacks share metrics so it will be default 0
         }
     }

@@ -2,8 +2,9 @@
 import os
 import sqlite3
 import tempfile
-
 import pytest
+
+os.environ["FIXTURE_MODE"] = "0"
 
 from backend.app import create_app
 from backend.auth import generate_token

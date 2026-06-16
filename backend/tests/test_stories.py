@@ -28,7 +28,7 @@ def _pipeline_story(title: str = "AI breakthrough", relevance_score: float = 0.9
     }
 
 
-def make_story(db: sqlite3.Connection, title: str = "Big AI story", last_updated_at: str = "2026-01-02T00:00:00") -> int:
+def make_story(db: sqlite3.Connection, title: str = "Big AI story", last_updated_at: str = "2026-01-02T00:00:00") -> int | None:
     """Insert a story row and return its new id."""
     cur = db.execute(
         "INSERT INTO stories (title, item_count, first_seen_at, last_updated_at) "
@@ -39,7 +39,7 @@ def make_story(db: sqlite3.Connection, title: str = "Big AI story", last_updated
     return cur.lastrowid
 
 
-def make_item(db: sqlite3.Connection, story_id: int, title: str = "An article", published_at: str = "2026-01-01T12:00:00") -> int:
+def make_item(db: sqlite3.Connection, story_id: int | None, title: str = "An article", published_at: str = "2026-01-01T12:00:00") -> int | None:
     """Insert a news item attached to the given story and return its id."""
     cur = db.execute(
         "INSERT INTO items "

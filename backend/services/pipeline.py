@@ -9,9 +9,11 @@ import json
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 
+from backend.db import get_db
+
 from backend.fetchers.gnews import fetch_gnews
 from backend.fetchers.youtube import fetch_youtube
-from backend.fetchers.reddit import fetch_reddit
+from backend.fetchers.lemmy import fetch_lemmy
 from backend.services.cache import fetch_with_cache
 from backend.services.fetchers.base import UpstreamError
 
@@ -89,7 +91,7 @@ def resolve_weights(
         A weights dict with the four component weights plus a nested
         "source_prefs" mapping.
     """
-    weights = _merge_overrides(DEFAULT_WEIGHTS, weights_json)
+    weights: Dict[str, Any] = dict(_merge_overrides(DEFAULT_WEIGHTS, weights_json))
     weights["source_prefs"] = _merge_overrides(DEFAULT_SOURCE_PREFS, source_prefs_json)
     return weights
 
@@ -154,9 +156,24 @@ def generate_feed(
     Returns:
         List of story dicts, each containing a list of enriched items.
     """
-    user_interests = ["artificial intelligence"]  # placeholder until DB ready
-
-    queries = [search_query] if search_query else user_interests
+    if search_query:
+        queries = [search_query]
+        user_interests = search_query.lower().split()
+    elif user_id is not None:
+        rows = get_db().execute(
+            "SELECT name, keywords_json FROM interests WHERE user_id = ?",
+            [user_id],
+        ).fetchall()
+        queries = [r["name"] for r in rows] if rows else ["general news"]
+        user_interests = []
+        for r in rows:
+            kws = json.loads(r["keywords_json"] or "[]")
+            user_interests.extend(kws)
+        if not user_interests:
+            user_interests = queries  # use interest names as keywords
+    else:
+        queries = ["general news"]
+        user_interests = queries
     raw_items: List[Dict[str, Any]] = []
 
     for q in queries:
@@ -170,7 +187,7 @@ def generate_feed(
             )
         if not source_filter or source_filter == "discussion":
             raw_items.extend(
-                _safe_fetch(fetch_reddit, q, f"reddit_{q}")
+                _safe_fetch(fetch_lemmy, q, f"lemmy_{q}")
             )
 
     # drop anything older than the freshness window before doing any work
@@ -184,7 +201,9 @@ def generate_feed(
     for item in raw_items:
         text = item.get("text", "")
         item["keywords"] = keywords(text)
-        item["sentiment"] = sentiment(text)[1]
+        score, label = sentiment(text)
+        item["sentiment_score"] = score
+        item["sentiment"] = label
         item["credibility"] = credibility_tier(
             item.get("source_type", ""), item.get("source_name", "")
         )

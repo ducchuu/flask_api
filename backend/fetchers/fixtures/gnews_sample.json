@@ -1,0 +1,16 @@
+{
+  "articles": [
+    {
+      "title": "A Sample GNews Article",
+      "description": "This is a placeholder description.",
+      "content": "This is placeholder content for GNews.",
+      "url": "https://example.com/gnews",
+      "image": "https://example.com/image.png",
+      "publishedAt": "2026-06-16T12:00:00Z",
+      "source": {
+        "name": "FixtureNews",
+        "url": "https://example.com"
+      }
+    }
+  ]
+}

@@ -293,7 +293,7 @@ class TestUpstreamErrors:
         from backend.services.fetchers.base import RateLimitError
         user_id = make_user(db, "up3")
         with patch("backend.routes.items.stats_by_interest",
-                   side_effect=RateLimitError("rate limited", source="reddit")):
+                   side_effect=RateLimitError("rate limited", source="lemmy")):
             r = client.get("/api/items/stats?by=interest",
                            headers=auth_headers(app, user_id))
         assert r.status_code == 429
@@ -315,7 +315,7 @@ class TestUpstreamErrors:
         from backend.services.fetchers.base import UpstreamParseError
         user_id = make_user(db, "up5")
         with patch("backend.routes.items.stats_by_source_type",
-                   side_effect=UpstreamParseError("bad json", source="reddit")):
+                   side_effect=UpstreamParseError("bad json", source="lemmy")):
             r = client.get("/api/items/stats?by=source_type",
                            headers=auth_headers(app, user_id))
         assert r.status_code == 502
@@ -361,7 +361,7 @@ class TestPipelinePartialFailure:
     """Tests that one failing source does not crash the whole pipeline."""
 
     def test_gnews_failure_still_returns_results(self, client, app, db):
-        """GNews failing does not prevent YouTube and Reddit results."""
+        """GNews failing does not prevent YouTube and Lemmy results."""
         from backend.services.fetchers.base import UpstreamServerError
         user_id = make_user(db, "pipe1")
         with patch("backend.services.pipeline.fetch_gnews",
@@ -378,8 +378,8 @@ class TestPipelinePartialFailure:
                    side_effect=UpstreamServerError("down", source="gnews")), \
              patch("backend.services.pipeline.fetch_youtube",
                    side_effect=UpstreamServerError("down", source="youtube")), \
-             patch("backend.services.pipeline.fetch_reddit",
-                   side_effect=UpstreamServerError("down", source="reddit")):
+             patch("backend.services.pipeline.fetch_lemmy",
+                   side_effect=UpstreamServerError("down", source="lemmy")):
             r = client.get("/api/items/stats?by=source_type",
                            headers=auth_headers(app, user_id))
         assert r.status_code in (200, 502)
