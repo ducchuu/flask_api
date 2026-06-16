@@ -4,6 +4,7 @@ from unittest.mock import patch, MagicMock
 from backend.fetchers.gnews import fetch_gnews
 from backend.fetchers.youtube import fetch_youtube
 from backend.fetchers.reddit import fetch_reddit
+from backend.services.fetchers.base import RateLimitError, UpstreamServerError
 import requests
 
 # status code 500
@@ -40,8 +41,8 @@ def test_fetch_reddit_failure(mock_get: Any) -> None:
     mock_response.status_code = 429
     mock_get.return_value = mock_response
 
-    result = fetch_reddit("artificial intelligence")
-    assert result == []
+    with pytest.raises(RateLimitError):
+        fetch_reddit("artificial intelligence")
 
 # timeout
 
@@ -60,9 +61,8 @@ def test_fetch_youtube_timeout(mock_get: Any) -> None:
 @patch('requests.get')
 def test_fetch_reddit_timeout(mock_get: Any) -> None:
     mock_get.side_effect = requests.RequestException("Timeout")
-    mock_get.side_effect = requests.RequestException("Timeout")
-    result = fetch_reddit("artificial intelligence")
-    assert result == []
+    with pytest.raises(UpstreamServerError):
+        fetch_reddit("artificial intelligence")
 
 # status code 200 SUCESS
 
