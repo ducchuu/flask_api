@@ -221,6 +221,7 @@ class Item:
     sentiment_label: Optional[str]
     keywords: list[str]
     credibility_tier: Optional[str]
+    relevance_score: Optional[float]
     story_id: Optional[int]
 
     @classmethod
@@ -241,6 +242,7 @@ class Item:
             sentiment_label=row["sentiment_label"],
             keywords=_load_keywords(row["keywords_json"]),
             credibility_tier=row["credibility_tier"],
+            relevance_score=row["relevance_score"],
             story_id=row["story_id"],
         )
 
@@ -261,20 +263,6 @@ class Item:
             "sentiment_label": self.sentiment_label,
             "keywords": self.keywords,
             "credibility_tier": self.credibility_tier,
-            "story_id": self.story_id,
-            "id": self.id,
-            "source_type": self.source_type,
-            "source_name": self.source_name,
-            "url": self.url,
-            "title": self.title,
-            "summary": self.summary,
-            "author": self.author,
-            "published_at": self.published_at,
-            "metrics": self.metrics,
-            "read_time_min": self.read_time_min,
-            "sentiment_score": self.sentiment_score,
-            "sentiment_label": self.sentiment_label,
-            "keywords": self.keywords,
-            "credibility_tier": self.credibility_tier,
+            "relevance_score": self.relevance_score,
             "story_id": self.story_id,
         }
