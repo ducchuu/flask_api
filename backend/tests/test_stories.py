@@ -1,8 +1,31 @@
-"""API tests for the read-only stories endpoints."""
+"""API tests for the stories endpoints (read + pipeline-backed ingestion)."""
 import json
 import sqlite3
+from unittest.mock import patch
 
 from flask.testing import FlaskClient
+
+
+def _pipeline_story(title: str = "AI breakthrough", relevance_score: float = 0.9) -> dict:
+    """build a clustered story dict shaped like generate_feed's output."""
+    return {
+        "id": "story-1",
+        "keywords": ["ai"],
+        "title": title,
+        "items": [
+            {
+                "source_type": "news",
+                "title": "an article",
+                "published_at": "2026-01-01T00:00:00",
+                "keywords": ["ai"],
+                "metrics": {},
+                "sentiment": "positive",
+                "credibility": "high",
+                "read_time": 3,
+                "relevance_score": relevance_score,
+            }
+        ],
+    }
 
 
 def make_story(db: sqlite3.Connection, title: str = "Big AI story", last_updated_at: str = "2026-01-02T00:00:00") -> int:
@@ -90,3 +113,77 @@ def test_get_story_with_no_items_returns_empty_list(db: sqlite3.Connection, clie
 def test_get_missing_story_is_404(client: FlaskClient) -> None:
     """Asking for a story that does not exist is a 404, not a crash."""
     assert client.get("/api/stories/999").status_code == 404
+
+
+# --- POST /api/stories: run the pipeline and persist the result -------------
+
+def test_post_runs_pipeline_and_reports_counts(client: FlaskClient) -> None:
+    """POST triggers ingestion and reports how many stories/items were stored."""
+    with patch("backend.routes.stories.generate_feed", return_value=[_pipeline_story()]):
+        resp = client.post("/api/stories")
+    assert resp.status_code == 201
+    assert resp.get_json() == {"stories": 1, "items": 1}
+
+
+def test_post_then_story_is_listed(client: FlaskClient) -> None:
+    """a story created via POST is afterwards returned by the GET list."""
+    with patch("backend.routes.stories.generate_feed", return_value=[_pipeline_story("Fresh")]):
+        client.post("/api/stories")
+    titles = [s["title"] for s in client.get("/api/stories").get_json()]
+    assert "Fresh" in titles
+
+
+def test_post_empty_pipeline_still_succeeds(client: FlaskClient) -> None:
+    """an empty pipeline result persists nothing but is not an error."""
+    with patch("backend.routes.stories.generate_feed", return_value=[]):
+        resp = client.post("/api/stories")
+    assert resp.status_code == 201
+    assert resp.get_json() == {"stories": 0, "items": 0}
+
+
+def test_post_persists_relevance_score_exposed_in_detail(client: FlaskClient) -> None:
+    """the pipeline's relevance_score is stored and shown in the detail view."""
+    with patch("backend.routes.stories.generate_feed", return_value=[_pipeline_story(relevance_score=0.77)]):
+        client.post("/api/stories")
+    story_id = client.get("/api/stories").get_json()[0]["id"]
+    item = client.get(f"/api/stories/{story_id}").get_json()["items"][0]
+    assert item["relevance_score"] == 0.77
+
+
+# --- GET /api/stories pagination (?limit= & ?offset=) -----------------------
+
+def test_list_respects_limit(db: sqlite3.Connection, client: FlaskClient) -> None:
+    """?limit=N returns at most N stories."""
+    for i in range(5):
+        make_story(db, title=f"S{i}", last_updated_at=f"2026-01-0{i + 1}T00:00:00")
+    resp = client.get("/api/stories?limit=2")
+    assert resp.status_code == 200
+    assert len(resp.get_json()) == 2
+
+
+def test_list_offset_skips_in_order(db: sqlite3.Connection, client: FlaskClient) -> None:
+    """?offset=N skips the first N stories in the newest-first order."""
+    make_story(db, title="Newest", last_updated_at="2026-03-01T00:00:00")
+    make_story(db, title="Middle", last_updated_at="2026-02-01T00:00:00")
+    make_story(db, title="Oldest", last_updated_at="2026-01-01T00:00:00")
+    titles = [s["title"] for s in client.get("/api/stories?limit=2&offset=1").get_json()]
+    assert titles == ["Middle", "Oldest"]
+
+
+def test_list_without_pagination_returns_all(db: sqlite3.Connection, client: FlaskClient) -> None:
+    """omitting limit/offset returns every story (existing behaviour preserved)."""
+    for i in range(3):
+        make_story(db, title=f"S{i}", last_updated_at=f"2026-01-0{i + 1}T00:00:00")
+    assert len(client.get("/api/stories").get_json()) == 3
+
+
+def test_list_invalid_limit_is_400(client: FlaskClient) -> None:
+    """a non-positive or non-numeric limit is a client error, not a crash."""
+    assert client.get("/api/stories?limit=0").status_code == 400
+    assert client.get("/api/stories?limit=abc").status_code == 400
+
+
+def test_list_invalid_offset_is_400(client: FlaskClient) -> None:
+    """a negative or non-numeric offset is a client error, not a crash."""
+    assert client.get("/api/stories?offset=-1").status_code == 400
+    assert client.get("/api/stories?offset=abc").status_code == 400
