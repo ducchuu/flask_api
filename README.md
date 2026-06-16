@@ -1,6 +1,6 @@
 # Pulse
 
-Pulse is a personalised content feed web app. It pulls articles, videos and discussions from several public APIs, scores them against the topics a user cares about, and serves the result as a single ranked feed. The goal is to replace checking five different sites with one page that already knows what you are interested in, to save you time and surface update syou actually care about.
+Pulse is a personalised content feed web app. It pulls articles, videos and discussions from several public APIs, scores them against the topics a user cares about, and serves the result as a single ranked feed. The goal is to replace checking five different sites with one page that already knows what you are interested in, to save you time and surface update you actually care about.
 
 ## Frontend mockup
 
@@ -10,7 +10,7 @@ Pulse is a personalised content feed web app. It pulls articles, videos and disc
 
 - User accounts with sign up, login and a tunable profile.
 - Interests: add the topics you follow, each with keywords and a weight.
-- A combined feed built from GNews, YouTube and Lemmy.
+- A combined feed built from GNews, YouTube and Lemmy (update from Reddit that we have proposed for the project, we haven't been approved for the API key by Reddit yet, so there is the substitution).
 - Relevance scoring that mixes keyword overlap, freshness, sentiment and source preference.
 - Related items grouped into stories so the same event is not repeated.
 - Collections so a user can save items into their own lists.
@@ -52,8 +52,10 @@ cp backend/.env.example backend/.env
 ```
 
 Open `backend/.env` and fill in the values. `SECRET_KEY` can be any long random
-string. The API keys are only needed if you want live data. If you leave
-`FIXTURE_MODE=1` the app runs on recorded sample data and needs no keys, which is
+string. The API keys are only needed if you want live data.
+Note and clarification on External APIs: GNews and YouTube require API keys to fetch live data. The Lemmy API is an open REST API and does not require an API key for public searches.
+
+If you leave `FIXTURE_MODE=1` the app runs on recorded sample data and needs no keys, which is
 the easiest way to try it out.
 
 ## Running the app
@@ -69,7 +71,11 @@ curl http://127.0.0.1:5000/api/health
 # {"status": "ok"}
 ```
 
+Visiting http://127.0.0.1:5000 in your browser will return "Test home page URL good" as an updated baseline health check.
+
 ## Running the tests
+
+Expected 324 tests to run and pass.
 
 ```bash
 pytest backend/
