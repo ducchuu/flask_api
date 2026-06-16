@@ -10,7 +10,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 WORDS_PER_MINUTE = 200
 
-# a simple set of common English stopwords to exclude from keyword extraction, I hardcoded this to avoid adding a dependency on nltk or similar libraries
+# common english stopwords to skip when extracting keywords
+# hardcoded to avoid pulling in an nltk-style dependency
 STOPWORDS = {
     "the", "a", "an", "and", "or", "but", "of", "in", "on", "for", "to",
     "is", "are", "was", "were", "be", "been", "being", "this", "that",
@@ -21,6 +22,7 @@ STOPWORDS = {
     "will", "would", "can", "could", "should", "about",
 }
 
+# curated trust lists: source name -> credibility tier, one table per source type
 NEWS_TIERS = {
     "bbc.com": "high",
     "reuters.com": "high",
@@ -59,11 +61,12 @@ def read_time(text: Optional[str]) -> int:
     words = len(text.split())
     if words == 0:
         return 0
+    # round up so any non-empty article reads as at least 1 minute
     return max(1, math.ceil(words / WORDS_PER_MINUTE))
 
 
 def video_duration_minutes(iso_duration: Optional[str]) -> int:
-    """Convert an ISO-8601(this is a duration like 'PT1H2M30S' - which represents 1 hour, 2 minutes, and 30 seconds) to whole minutes (rounded up)."""
+    """Convert an ISO-8601 duration (e.g. 'PT1H2M30S') to whole minutes, rounded up."""
     if not iso_duration:
         return 0
     try:
@@ -81,6 +84,7 @@ def sentiment(text: Optional[str]) -> tuple[float, str]:
         return 0.0, "neutral"
     scores = _analyzer.polarity_scores(text)
     compound = scores["compound"]
+    # vader's standard cutoffs for splitting the score into a label
     if compound >= 0.05:
         label = "positive"
     elif compound <= -0.05:
@@ -94,9 +98,11 @@ def keywords(text: Optional[str], top_n: int = 5) -> list[str]:
     """Return the top_n most frequent non-stopword tokens from the text."""
     if not text:
         return []
+    # split into lowercase alphanumeric tokens, dropping stopwords
     tokens = [t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in STOPWORDS]
     if not tokens:
         return []
+    # rank by frequency and keep the top_n
     counts = Counter(tokens)
     return [word for word, _ in counts.most_common(top_n)]
 
@@ -112,10 +118,11 @@ def _normalize_source_name(source_type: str, source_name: str) -> str:
 
 
 def credibility_tier(source_type: str, source_name: Optional[str]) -> str:
-    """ Map a source to a credibility tier ('high', 'medium', 'unknown')"""
+    """Map a source to a credibility tier ('high', 'medium', or 'unknown')."""
     if not source_name:
         return "unknown"
     name = _normalize_source_name(source_type, source_name)
+    # each source type has its own lookup table of trusted names
     if source_type == "news":
         return NEWS_TIERS.get(name, "unknown")
     if source_type == "video":

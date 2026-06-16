@@ -4,8 +4,10 @@ from datetime import datetime, timedelta, timezone
 from backend.services import scoring
 
 
+# fixed "current time" so recency-based tests are deterministic
 NOW = datetime(2026, 6, 11, 12, 0, 0, tzinfo=timezone.utc)
 
+# sample weights that sum to 1.0, mirroring a realistic scoring config
 DEFAULT_WEIGHTS = {
     "interest": 0.4,
     "recency": 0.3,

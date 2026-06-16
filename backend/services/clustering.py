@@ -11,13 +11,14 @@ def similarity(a: list[str], b: list[str]) -> float:
     union = set_a | set_b
     if not union:
         return 0.0
+    # jaccard index: shared keywords over total distinct keywords
     return len(set_a & set_b) / len(union)
 
 
 def _best_cluster(item_keywords: list[str], clusters: list[dict], threshold: float) -> Optional[int]:
     """Return the index of the cluster most similar to the item, or None if none pass the threshold."""
     best_index = None
-    best_score = threshold
+    best_score = threshold  # a cluster must beat the threshold to be a match
     for i, cluster in enumerate(clusters):
         score = similarity(item_keywords, cluster["keywords"])
         if score >= best_score:
@@ -36,6 +37,7 @@ def cluster_items(items: list[dict], threshold: float = 0.3) -> list[dict]:
     clusters: list[dict] = []
     for item in items:
         item_keywords = item.get("keywords", []) or []
+        # no keywords means nothing to match on, so the item starts its own story
         match = _best_cluster(item_keywords, clusters, threshold) if item_keywords else None
         if match is None:
             clusters.append({
@@ -45,6 +47,7 @@ def cluster_items(items: list[dict], threshold: float = 0.3) -> list[dict]:
             })
         else:
             clusters[match]["items"].append(item)
+            # grow the cluster's keyword set with any new words this item adds
             existing = {w.lower() for w in clusters[match]["keywords"]}
             for word in item_keywords:
                 if word.lower() not in existing:

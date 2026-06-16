@@ -25,11 +25,15 @@ def list_stories() -> Any:
 def get_story(story_id: int) -> Any:
     """Return a single story together with all of its clustered items."""
     db = get_db()
-    row = db.execute( "SELECT * FROM stories WHERE id = ?", [story_id]).fetchone()
+    row = db.execute("SELECT * FROM stories WHERE id = ?", [story_id]).fetchone()
     if row is None:
         abort(404, description="Story not found")
 
-    item_rows = db.execute( "SELECT * FROM items WHERE story_id = ? ORDER BY published_at DESC",[story_id],).fetchall()
+    # fetch the story's items separately and nest them under the story
+    item_rows = db.execute(
+        "SELECT * FROM items WHERE story_id = ? ORDER BY published_at DESC",
+        [story_id],
+    ).fetchall()
     story = Story.from_row(row).to_dict()
     story["items"] = [Item.from_row(item).to_dict() for item in item_rows]
     return jsonify(story)

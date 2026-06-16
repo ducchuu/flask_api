@@ -2,6 +2,8 @@
 import json
 import sqlite3
 
+from flask.testing import FlaskClient
+
 
 def make_story(db: sqlite3.Connection, title: str = "Big AI story", last_updated_at: str = "2026-01-02T00:00:00") -> int:
     """Insert a story row and return its new id."""
@@ -25,7 +27,7 @@ def make_item(db: sqlite3.Connection, story_id: int, title: str = "An article", 
             "bbc.com",
             "https://example.com/article",
             title,
-            json.dumps(["ai", "ml"]),
+            json.dumps(["ai", "ml"]),  # keywords/metrics are stored as json strings
             json.dumps({"shares": 42}),
             story_id,
             published_at,
@@ -35,14 +37,14 @@ def make_item(db: sqlite3.Connection, story_id: int, title: str = "An article", 
     return cur.lastrowid
 
 
-def test_list_empty_returns_200_and_empty_list(client) -> None:
+def test_list_empty_returns_200_and_empty_list(client: FlaskClient) -> None:
     """ 'no stories yet' is a normal empty result, not an error"""
     resp = client.get("/api/stories")
     assert resp.status_code == 200
     assert resp.get_json() == []
 
 
-def test_list_returns_stories_newest_first(db, client) -> None:
+def test_list_returns_stories_newest_first(db: sqlite3.Connection, client: FlaskClient) -> None:
     """stories come back ordered by last_updated_at - with most recent first"""
     make_story(db, title="Older", last_updated_at="2026-01-01T00:00:00")
     make_story(db, title="Newer", last_updated_at="2026-03-01T00:00:00")
@@ -53,7 +55,7 @@ def test_list_returns_stories_newest_first(db, client) -> None:
     assert titles == ["Newer", "Older"]
 
 
-def test_get_story_includes_its_items(db, client) -> None:
+def test_get_story_includes_its_items(db: sqlite3.Connection, client: FlaskClient) -> None:
     """The detail endpoint returns the story plus every clustered item underneath it"""
     story_id = make_story(db)
     make_item(db, story_id, title="First")
@@ -68,7 +70,7 @@ def test_get_story_includes_its_items(db, client) -> None:
     assert body["items"][0]["metrics"] == {"shares": 42}
 
 
-def test_get_story_orders_items_newest_first(db, client) -> None:
+def test_get_story_orders_items_newest_first(db: sqlite3.Connection, client: FlaskClient) -> None:
     """items inside a story are ordered by published_at, newest first"""
     story_id = make_story(db)
     make_item(db, story_id, title="Old", published_at="2026-01-01T00:00:00")
@@ -78,13 +80,13 @@ def test_get_story_orders_items_newest_first(db, client) -> None:
     assert [item["title"] for item in body["items"]] == ["New", "Old"]
 
 
-def test_get_story_with_no_items_returns_empty_list(db, client) -> None:
+def test_get_story_with_no_items_returns_empty_list(db: sqlite3.Connection, client: FlaskClient) -> None:
     """A story that has no items yet still returns an empty items list."""
     story_id = make_story(db)
     body = client.get(f"/api/stories/{story_id}").get_json()
     assert body["items"] == []
 
 
-def test_get_missing_story_is_404(client) -> None:
+def test_get_missing_story_is_404(client: FlaskClient) -> None:
     """Asking for a story that does not exist is a 404, not a crash."""
     assert client.get("/api/stories/999").status_code == 404

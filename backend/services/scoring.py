@@ -3,6 +3,7 @@ import math
 from datetime import datetime
 from typing import Any, Optional
 
+# rough "very popular" engagement per source type, used to normalize scores to [0, 1]
 POPULARITY_CEILING = {
     "news": 100_000,
     "video": 10_000_000,
@@ -20,6 +21,7 @@ def interest_match(interest_keywords: list[str], item_keywords: list[str]) -> fl
     union = a | b
     if not union:
         return 0.0
+    # jaccard overlap between the interest and item keywords
     return len(intersection) / len(union)
 
 
@@ -29,6 +31,7 @@ def recency_decay(published_at: datetime, now: datetime, half_life_hours: float 
     if delta <= 0:
         return 1.0
     hours = delta / 3600.0
+    # halves once per half-life, so 24h -> 0.5, 48h -> 0.25, etc.
     return 0.5 ** (hours / half_life_hours)
 
 
@@ -36,6 +39,7 @@ def popularity(metrics: dict, source_type: str) -> float:
     """log-scale engagement metrics into a [0, 1] popularity score per source type"""
     if not metrics:
         return 0.0
+    # each source type measures engagement with a different metric
     if source_type == "video":
         raw = metrics.get("views", 0)
     elif source_type == "news":
@@ -46,6 +50,7 @@ def popularity(metrics: dict, source_type: str) -> float:
         raw = 0
     if raw <= 0:
         return 0.0
+    # log scale against a per-type ceiling so a few viral items don't dominate
     ceiling = POPULARITY_CEILING.get(source_type, 10_000)
     score = math.log10(1 + raw) / math.log10(1 + ceiling)
     return max(0.0, min(1.0, score))
@@ -76,12 +81,14 @@ def score_item(item: dict, interest_keywords: list[str], weights: dict, now: dat
     metrics = item.get("metrics", {}) or {}
     published_at = _parse_published(item.get("published_at"))
 
+    # score each component on its own [0, 1] scale; missing date -> no recency
     breakdown = {
         "interest": interest_match(interest_keywords, item_keywords),
         "recency": recency_decay(published_at, now) if published_at else 0.0,
         "popularity": popularity(metrics, source_type),
         "source": source_pref(source_type, weights.get("source_prefs", {})),
     }
+    # combine the components as a weighted sum, then clamp to [0, 1]
     score = (
         breakdown["interest"] * weights.get("interest", 0.0)
         + breakdown["recency"] * weights.get("recency", 0.0)
