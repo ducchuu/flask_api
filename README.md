@@ -10,7 +10,7 @@ Pulse is a personalised content feed web app. It pulls articles, videos and disc
 
 - User accounts with sign up, login and a tunable profile.
 - Interests: add the topics you follow, each with keywords and a weight.
-- A combined feed built from GNews, YouTube and Reddit.
+- A combined feed built from GNews, YouTube and Lemmy.
 - Relevance scoring that mixes keyword overlap, freshness, sentiment and source preference.
 - Related items grouped into stories so the same event is not repeated.
 - Collections so a user can save items into their own lists.
@@ -111,7 +111,7 @@ backend/
   schema.sql        database tables
   models.py         data classes for users, items, interests and so on
   routes/           one file per feature (users, interests, feed, stories, ...)
-  fetchers/         pull and normalise data from GNews, YouTube and Reddit
+  fetchers/         pull and normalise data from GNews, YouTube and Lemmy
   services/         the pipeline, scoring, enrichment, clustering and caching
   tests/            pytest suite
 frontend/           frontend app

@@ -24,7 +24,7 @@ def normalize_lemmy(raw_item: dict) -> dict:
     return {
         "id": str(post.get("id", "")),
         "external_id": str(post.get("id", "")),
-        "source_type": "lemmy",
+        "source_type": "discussion",
         "source_name": f"Lemmy/c/{community.get('name', 'unknown')}",
         "title": post.get("name", ""),
         "text": post.get("body", "") or "",

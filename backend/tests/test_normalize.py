@@ -20,7 +20,7 @@ def test_normalize_lemmy_valid() -> None:
     res = normalize_lemmy(raw)
     assert res["id"] == "12345"
     assert res["external_id"] == "12345"
-    assert res["source_type"] == "lemmy"
+    assert res["source_type"] == "discussion"
     assert res["source_name"] == "Lemmy/c/technology"
     assert res["title"] == "Lemmy Test"
     assert res["text"] == "This is a body"

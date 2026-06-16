@@ -177,6 +177,17 @@ class TestEdgeCases:
         assert row["source_type"] == "news"
         assert row["relevance_score"] is None
 
+    def test_discussion_source_item_persists(self, app: Flask, db: sqlite3.Connection) -> None:
+        """a discussion-source item (what normalize_lemmy now emits) passes the
+        schema CHECK and persists. Regression: it previously emitted
+        source_type='lemmy', which the items.source_type CHECK rejects."""
+        with app.app_context():
+            result = save_stories([make_story([make_item(source_type="discussion")])])
+        assert result["items"] == 1
+        assert db.execute(
+            "SELECT source_type FROM items"
+        ).fetchone()["source_type"] == "discussion"
+
     def test_data_survives_across_connections(self, app: Flask, db: sqlite3.Connection) -> None:
         """writes are committed, so a separate connection can read them back."""
         with app.app_context():
