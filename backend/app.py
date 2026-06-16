@@ -13,12 +13,12 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
 
     Args:
         config: optional overrides (used by tests to point at a temp database
-            and flip TESTING on).
+            and flip TESTING on)
     """
     app = Flask(__name__)
     app.config.from_mapping(
         DATABASE=os.environ.get("DATABASE", "pulse.db"),
-        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-change-me"),
+        SECRET_KEY=os.environ.get("SECRET_KEY", "somesortasecret"),
     )
     if config:
         app.config.update(config)
@@ -27,16 +27,17 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
     with app.app_context():
         init_db()
 
+    _register_error_handlers(app)
     _register_routes(app)
     return app
 
 
 def _register_routes(app: Flask) -> None:
-    """Attach the health check and all feature blueprints."""
+    """attach health check and all feature blueprints."""
 
     @app.get("/api/health")
     def health() -> Any:
-        """Liveness probe used by the frontend and by smoke tests."""
+        """liveness probe used by the frontend and by smoke tests"""
         return jsonify({"status": "ok"})
 
     from backend.routes.interests import bp as interests_bp
@@ -44,9 +45,36 @@ def _register_routes(app: Flask) -> None:
     from backend.routes.stories import bp as stories_bp
     from backend.routes.users import bp as users_bp
     from backend.routes.items import bp as items_bp
-    
+    from backend.routes.collections import bp as collections_bp
+    from backend.routes.feedback import bp as feedback_bp
+
+    # all the blueprints imported here for simplicity and then directly registered
     app.register_blueprint(interests_bp)
     app.register_blueprint(feed_bp)  # I added the blueprint to feed module
     app.register_blueprint(stories_bp)
-    app.register_blueprint(items_bp)
     app.register_blueprint(users_bp)
+    app.register_blueprint(items_bp)
+    app.register_blueprint(collections_bp)
+    app.register_blueprint(feedback_bp)
+
+
+def _register_error_handlers(app: Flask) -> None:
+    """return every error as a consistent JSON envelope
+
+    Shape: {"error": {"code": <int>, "message": <str>}}, so the frontend gets
+    JSON for 4xx/5xx responses instead of Flask's default HTML error pages, easier for debugging in the future
+    """
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(exc: HTTPException) -> Any:
+        response = jsonify({"error": {"code": exc.code, "message": exc.description}})
+        response.status_code = exc.code or 500
+        return response
+
+    @app.errorhandler(Exception)
+    def handle_unexpected(exc: Exception) -> Any:
+        if isinstance(exc, HTTPException):
+            raise exc
+        response = jsonify({"error": {"code": 500, "message": "Internal server error"}})
+        response.status_code = 500
+        return response

@@ -1,4 +1,3 @@
-from IPython.core import display_functions
 import pytest
 from typing import Dict, Any
 from backend.fetchers.normalize import normalize_reddit, normalize_youtube, normalize_gnews

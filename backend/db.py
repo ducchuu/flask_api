@@ -1,7 +1,7 @@
-"""SQLite connection handling and schema initialisation.
+"""sqlite connection handling + schema setup.
 
-The connection is stored on Flask's ``g`` so each request reuses a single
-connection and it gets closed automatically when the request ends.
+We keep the connection on Flask's ``g`` so each request reuses one connection,
+then it gets closed automatically once the request finishes.
 """
 import sqlite3
 from pathlib import Path
@@ -12,10 +12,10 @@ SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
 def get_db() -> sqlite3.Connection:
-    """Return the request-scoped database connection, opening one if needed.
+    """Return the per-request db connection, opening one if we don't have it yet.
 
-    Rows come back as ``sqlite3.Row`` so they can be accessed by column name,
-    and foreign-key enforcement is turned on (SQLite leaves it off by default).
+    Rows come back as sqlite3.Row so we can grab columns by name. Also flip on
+    foreign keys since sqlite leaves them off by default.
     """
     if "db" not in g:
         g.db = sqlite3.connect(
@@ -23,22 +23,22 @@ def get_db() -> sqlite3.Connection:
             detect_types=sqlite3.PARSE_DECLTYPES,
         )
         g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
+        g.db.execute("PRAGMA foreign_keys = ON")  # not on by default, easy to forget
     return g.db
 
 
 def close_db(exception: BaseException | None = None) -> None:
-    """Close the request connection if one was opened. Registered as a teardown."""
-    db = g.pop("db", None)
-    if db is not None:
-        db.close()
+    """close the request connection if we opened one (hooked up as a teardown)"""
+    conn = g.pop("db", None)
+    if conn is not None:
+        conn.close()
 
 
 def init_db() -> None:
-    """Create any missing tables by running schema.sql.
+    """Build any missing tables from schema.sql.
 
-    Safe to call repeatedly: every statement uses ``CREATE TABLE IF NOT EXISTS``.
+    Fine to run more than once - every statement is CREATE TABLE IF NOT EXISTS.
     """
-    db = get_db()
-    db.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    db.commit()
+    conn = get_db()
+    conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    conn.commit()
