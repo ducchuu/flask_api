@@ -1,85 +1,50 @@
-import time
 import json
-import os
 from typing import Any, Callable, Dict, List
-
-CACHE_FILE = "api_cache.json"
-_save_calls_count: int = 0
-CLEAR_THRESHOLD: int = 100
-
-def _load_cache() -> Dict[str, Dict[str, Any]]:
-    """Loads the cache from the JSON file if it exists."""
-    if os.path.exists(CACHE_FILE):
-        try:
-            with open(CACHE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return {}  # Return empty if the file is corrupted or empty
-    return {}
-
-def _save_cache(cache_data: Dict[str, Dict[str, Any]]) -> None:
-    """Saves the cache dictionary to the JSON file."""
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(cache_data, f)
+# so now with the db module implemented, i changed from local caching in json file to caching in our sqlite database
+from backend.db import get_db
 
 def cleanup_expired_cache() -> None:
     """
-    iterates through the cache and deletes all expired entries
+    deletes all data that is currently in the cache db AND is expired
     """
-    cache_data = _load_cache()
-    current_time = time.time()
-    
-    expired_keys = [
-        k for k, v in cache_data.items() 
-        if current_time > v["expires_at"]
-    ]
-    
-    # Only save back to disk if we actually deleted something
-    if expired_keys:
-        for k in expired_keys:
-            del cache_data[k]
-        _save_cache(cache_data)
+    db = get_db()
+    # strftime('%s', ...) returns a string, so we must cast it to INTEGER before adding ttl_seconds
+    db.execute(
+        "DELETE FROM api_cache WHERE "
+        "(CAST(strftime('%s', fetched_at) AS INTEGER) + ttl_seconds) < CAST(strftime('%s', 'now') AS INTEGER)"
+    )
+    db.commit()
 
 def save_cached_data(query: str, data: List[Dict[str, Any]], ttl: int = 3600) -> None:
     """
-    saves data to cache and sets defualt timer for 3600 seconds. 
-    Also when the count of cached data goes above the threshold, calls cleanup_expired_cache() which will clean expired data from cache
+    saves data to the cache
     """
-    global _save_calls_count
-    
-    cache_data = _load_cache()
-    cache_data[query] = {
-        "data": data,
-        "expires_at": time.time() + ttl
-    }
-    _save_cache(cache_data)
-    
-    _save_calls_count += 1
-    if _save_calls_count >= CLEAR_THRESHOLD:
-        cleanup_expired_cache()
-        _save_calls_count = 0
+    db = get_db()
+    db.execute(
+        "INSERT OR REPLACE INTO api_cache (cache_key, payload_json, ttl_seconds) "
+        "VALUES (?, ?, ?)",
+        [query, json.dumps(data), ttl],
+    )
+    db.commit()
+
+    cleanup_expired_cache() #instead of timeout, everytime we save data to cache, we also check for expired data in cache to be deleted
 
 def get_cached_data(query: str) -> Any:
     """
-    retrieves data if it exists and hasn't expired
+    if data well exists in cache, it will be returned 
     """
-    cache_data = _load_cache()
-    cache_entry = cache_data.get(query)
-    
-    if not cache_entry:
+    db = get_db()
+    cleanup_expired_cache()
+    row = db.execute(
+        "SELECT payload_json FROM api_cache WHERE cache_key = ?", [query]
+    ).fetchone()
+    if row is None:
         return None
-        
-    if time.time() > cache_entry["expires_at"]:
-        # Data expired, clean it up individually on fetch
-        del cache_data[query]
-        _save_cache(cache_data)
-        return None
-        
-    return cache_entry["data"]
+    return json.loads(row["payload_json"])
 
 def fetch_with_cache(query: str, fetch_func: Callable[[str], List[Dict[str, Any]]], ttl: int = 3600) -> List[Dict[str, Any]]:
     """
-    wrapper function that checks cache first, then calls the fetch function if missed
+    additional wrapper fucntion that checks for data if it exists already in cache, and if not then it saves data to cache
     """
     cached_result = get_cached_data(query)
     if cached_result is not None:
@@ -91,9 +56,3 @@ def fetch_with_cache(query: str, fetch_func: Callable[[str], List[Dict[str, Any]
         save_cached_data(query, fresh_data, ttl)
         
     return fresh_data
-
-def fetch_from_api(query: str) -> List[Dict[str, Any]]:
-    """
-    for mock patch in testing for now, later this will be the right implementation
-    """
-    pass

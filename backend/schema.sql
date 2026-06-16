@@ -84,3 +84,5 @@ CREATE TABLE IF NOT EXISTS api_cache (
     fetched_at      TEXT NOT NULL DEFAULT (datetime('now')),
     ttl_seconds     INTEGER NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_feedback_user_item ON feedback (user_id, item_id); -- added now for cases when there might be dupklicates of the same data in database, so might throw errors

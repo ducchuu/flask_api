@@ -19,7 +19,7 @@ def make_collection(client, headers, name="Reading list"):
     return resp.get_json()
 
 
-def make_item(db: sqlite3.Connection, title="Some article") -> int:
+def make_item(db: sqlite3.Connection, title="Some article") -> int | None:
     """Insert a bare item row directly and return its id."""
     cur = db.execute(
         "INSERT INTO items (source_type, title, url) VALUES (?, ?, ?)",

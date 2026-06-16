@@ -49,7 +49,7 @@ def create_feedback() -> Any:
         abort(404, description="Item not found")
 
     cur = db.execute(
-        "INSERT INTO feedback (user_id, item_id, kind) VALUES (?, ?, ?)",
+        "INSERT OR REPLACE INTO feedback (user_id, item_id, kind) VALUES (?, ?, ?)", # update for solving possible dupliocates and integration errors
         [g.user_id, item_id, kind],
     )
     db.commit()

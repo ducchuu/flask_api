@@ -106,9 +106,9 @@ def test_source_filter_video_only_calls_youtube(mock_fetch):
 
 
 @patch('backend.services.pipeline.fetch_with_cache')
-def test_source_filter_discussion_only_calls_reddit(mock_fetch):
+def test_source_filter_discussion_only_calls_lemmy(mock_fetch):
     """
-    and also same for reddit and "discussion" filter
+    and also same for lemmy and "discussion" filter
     """
     mock_fetch.return_value = [_make_raw_item(source_type="discussion")]
 
@@ -116,7 +116,7 @@ def test_source_filter_discussion_only_calls_reddit(mock_fetch):
 
     assert mock_fetch.call_count == 1
     cache_key = mock_fetch.call_args_list[0][0][0]
-    assert cache_key.startswith("reddit_")
+    assert cache_key.startswith("lemmy_")
 
 
 @patch('backend.services.pipeline.fetch_with_cache')
@@ -132,7 +132,7 @@ def test_no_source_filter_calls_all_three(mock_fetch):
     cache_keys = [c[0][0] for c in mock_fetch.call_args_list]
     assert any(k.startswith("gnews_") for k in cache_keys)
     assert any(k.startswith("youtube_") for k in cache_keys)
-    assert any(k.startswith("reddit_") for k in cache_keys)
+    assert any(k.startswith("lemmy_") for k in cache_keys)
 
 
 @patch('backend.services.pipeline.fetch_with_cache')

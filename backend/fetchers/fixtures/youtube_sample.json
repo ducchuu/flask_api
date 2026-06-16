@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "id": {
+        "videoId": "fixture123"
+      },
+      "snippet": {
+        "title": "A Sample YouTube Video",
+        "description": "This is a placeholder description for YouTube.",
+        "publishedAt": "2026-06-16T12:00:00Z",
+        "channelTitle": "FixtureChannel"
+      },
+      "statistics": {
+        "viewCount": "100",
+        "likeCount": "10",
+        "commentCount": "1"
+      },
+      "contentDetails": {
+        "duration": "PT5M"
+      }
+    }
+  ]
+}

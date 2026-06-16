@@ -37,7 +37,7 @@ def test_get_feed_handles_filters(mock_generate, app, client, db):
 
     assert response.status_code == 200
     mock_generate.assert_called_once_with(
-        user_id=user_id,  # comes from the bearer token now
+        user_id=user_id,
         source_filter="video",
         sort_by="recency",
         search_query="python",
