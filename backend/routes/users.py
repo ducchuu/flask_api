@@ -1,4 +1,4 @@
-"""User routes — registration, login, and profile management.
+"""User routes - registration, login, and profile management.
 
 Follows the same pattern as routes/interests.py: SQL lives directly in the
 route functions, rows are converted via model classes from backend.models.
@@ -23,7 +23,7 @@ bp = Blueprint("users", __name__)
 
 
 # ---------------------------------------------------------------------------
-# POST /api/users — register
+# POST /api/users - register
 # ---------------------------------------------------------------------------
 
 @bp.post("/api/users")
@@ -68,7 +68,7 @@ def register() -> Any:
 
 
 # ---------------------------------------------------------------------------
-# POST /api/tokens — login
+# POST /api/tokens - login
 # ---------------------------------------------------------------------------
 
 @bp.post("/api/tokens")
@@ -96,7 +96,7 @@ def login() -> Any:
         "SELECT * FROM users WHERE username = ?", [data["username"]]
     ).fetchone()
 
-    # Intentionally vague — never reveal whether the username exists
+    # Intentionally vague - never reveal whether the username exists
     if row is None or not verify_password(data["password"], row["password_hash"]):
         return jsonify({"error": {
             "code": "UNAUTHORIZED",
@@ -148,7 +148,7 @@ def update_me() -> Any:
             "message": "No data provided",
         }}), 400
 
-    # Only these fields can be updated — sensitive fields silently ignored
+    # Only these fields can be updated - sensitive fields silently ignored
     allowed = {"username", "weights_json", "source_prefs_json"}
     updates = {k: v for k, v in data.items() if k in allowed}
 

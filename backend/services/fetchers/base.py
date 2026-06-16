@@ -4,10 +4,10 @@ All SourceClient implementations (GNews, YouTube, Reddit) raise from this
 module so error handling in the pipeline and routes is consistent.
 
 Exception hierarchy:
-    UpstreamError           — base for all fetcher failures
-        RateLimitError      — upstream returned 429
-        UpstreamServerError — upstream returned 5xx or was unreachable
-        UpstreamParseError  — response arrived but could not be parsed
+    UpstreamError - base for all fetcher failures
+        RateLimitError - upstream returned 429
+        UpstreamServerError - upstream returned 5xx or was unreachable
+        UpstreamParseError - response arrived but could not be parsed
 """
 
 from typing import Protocol, runtime_checkable

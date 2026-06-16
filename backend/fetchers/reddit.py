@@ -1,4 +1,4 @@
-"""Reddit fetcher — fetch and normalize discussion posts."""
+"""Reddit fetcher - fetch and normalize discussion posts."""
 import os
 import requests
 from typing import List, Dict, Any

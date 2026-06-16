@@ -1,4 +1,4 @@
-"""Feed query endpoint — the read-only query service for the dashboard.
+"""Feed query endpoint - the read-only query service for the dashboard.
 
 Exposes GET /api/items, which returns the scored and clustered feed for the
 logged-in user. Supports filtering by source type and a freshness window,
@@ -26,7 +26,7 @@ def get_items() -> Any:
         source: one of 'news', 'video', 'discussion' to show only that type.
         sort:   'relevance' (default), 'recency', or 'popularity'.
         query:  free-text search term that overrides the user's interests.
-        days:   freshness window — only keep items from the last N days.
+        days:   freshness window - only keep items from the last N days.
 
     Returns:
         200 with a JSON list of story dicts, or 500 if generation fails.

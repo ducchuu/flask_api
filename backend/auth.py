@@ -3,7 +3,7 @@
 Covers password hashing/verification, signed token generation and
 verification, and the @require_auth decorator that protects routes.
 
-Libraries (both ship with Flask — no new dependencies):
+Libraries (both ship with Flask - no new dependencies):
     werkzeug.security   password hashing via pbkdf2
     itsdangerous        URL-safe timed token signing
 """
@@ -57,7 +57,7 @@ def _serializer() -> URLSafeTimedSerializer:
 def generate_token(user_id: int) -> str:
     """Create a signed, expiring token for a given user.
 
-    Uses itsdangerous URLSafeTimedSerializer — the payload is signed with
+    Uses itsdangerous URLSafeTimedSerializer - the payload is signed with
     SECRET_KEY and expires after 1 hour. No token state is stored server-side.
 
     Args:
@@ -100,8 +100,8 @@ def require_auth(f: Callable) -> Callable:
     (User model) for use by the route.
 
     Sets:
-        g.user_id       — integer user id, used by teammates' routes
-        g.current_user  — User model instance, used by users routes
+        g.user_id - integer user id, used by teammates' routes
+        g.current_user - User model instance, used by users routes
 
     Returns:
         401 if the token is missing, invalid, or expired.

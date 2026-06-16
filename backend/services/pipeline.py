@@ -1,7 +1,7 @@
 """Feed generation pipeline.
 
 Orchestrates fetch → enrich → score → cluster across all sources.
-Partial failures are handled gracefully — if one source is down the
+Partial failures are handled gracefully - if one source is down the
 pipeline continues with results from the remaining sources.
 """
 
@@ -143,7 +143,7 @@ def generate_feed(
     Args:
         user_id:           The authenticated user's ID (used for interest lookup).
         source_filter:     Limit to one source type ('news', 'video', 'discussion').
-        sort_by:           Sort order — 'relevance', 'recency', or 'popularity'.
+        sort_by:           Sort order - 'relevance', 'recency', or 'popularity'.
         search_query:      Override interests with a manual search term.
         freshness_days:    If set, only keep items published in the last N days.
         weights_json:      The user's tuned component weights as a JSON string;

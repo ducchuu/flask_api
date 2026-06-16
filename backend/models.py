@@ -64,7 +64,7 @@ class User:
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-friendly dict.
 
-        password_hash is intentionally excluded — it must never be
+        password_hash is intentionally excluded - it must never be
         sent to the client.
         """
         return {

@@ -1,4 +1,4 @@
-"""Items routes — stats endpoint with upstream error handling.
+"""Items routes - stats endpoint with upstream error handling.
 
 Endpoints:
     GET /api/items/stats?by=source_type|interest|day
@@ -18,7 +18,7 @@ VALID_BY_VALUES = {"source_type", "interest", "day"}
 
 
 # ---------------------------------------------------------------------------
-# SQL helpers — stats queries live here since the group doesn't use repos
+# SQL helpers - stats queries live here since the group doesn't use repos
 # ---------------------------------------------------------------------------
 
 def stats_by_source_type() -> list[dict[str, Any]]:
@@ -61,7 +61,7 @@ def stats_by_day(window_days: int = 30) -> list[dict[str, Any]]:
 def stats_by_interest(user_id: int) -> list[dict[str, Any]]:
     """Count items matched per interest for the given user.
 
-    Uses keyword overlap via LIKE — an item is counted under an interest
+    Uses keyword overlap via LIKE - an item is counted under an interest
     if its keywords_json contains at least one of the interest's keywords.
 
     Args:

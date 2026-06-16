@@ -547,7 +547,7 @@ class TestEdgeCases:
     """Edge case tests for the stats endpoint."""
 
     def test_by_param_is_case_sensitive(self, client, app, db):
-        """by=Source_Type returns 400 — parameter is case sensitive."""
+        """by=Source_Type returns 400 - parameter is case sensitive."""
         user_id = make_user(db, "edge1")
         r = client.get("/api/items/stats?by=Source_Type",
                        headers=auth_headers(app, user_id))

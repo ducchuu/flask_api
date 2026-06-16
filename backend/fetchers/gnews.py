@@ -1,4 +1,4 @@
-"""GNews fetcher — fetch and normalize news articles from the GNews API."""
+"""GNews fetcher - fetch and normalize news articles from the GNews API."""
 import os
 import requests
 from typing import List, Dict, Any

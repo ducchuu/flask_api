@@ -146,7 +146,7 @@ class TestLogin:
     def test_wrong_and_unknown_return_same_error_code(self, client):
         """Wrong password and unknown username return identical error codes.
 
-        This prevents user enumeration — attacker cannot tell which was wrong.
+        This prevents user enumeration - attacker cannot tell which was wrong.
         """
         client.post("/api/users", json={"username": "bob", "password": "pass"})
         r_wrong = client.post("/api/tokens",
