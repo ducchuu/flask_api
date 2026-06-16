@@ -5,7 +5,7 @@ Partial failures are handled gracefully — if one source is down the
 pipeline continues with results from the remaining sources.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 
 from backend.fetchers.gnews import fetch_gnews
@@ -18,8 +18,22 @@ from backend.services.enrich import (
     keywords, sentiment, credibility_tier,
     read_time, video_duration_minutes,
 )
-from backend.services.scoring import score_item
+from backend.services.scoring import score_item, popularity
 from backend.services.clustering import cluster_items
+
+
+def _within_window(published_at: Optional[str], cutoff: datetime) -> bool:
+    """Return True if the item was published at or after the cutoff time.
+
+    Items with a missing or unparseable date are treated as outside the
+    window so the freshness filter never lets unknown-age items through.
+    """
+    if not published_at:
+        return False
+    try:
+        return datetime.fromisoformat(published_at) >= cutoff
+    except (ValueError, TypeError):
+        return False
 
 
 def _safe_fetch(fetch_fn, query: str, cache_key: str) -> List[Dict[str, Any]]:
@@ -48,14 +62,16 @@ def generate_feed(
     source_filter: Optional[str] = None,
     sort_by: str = "relevance",
     search_query: Optional[str] = None,
+    freshness_days: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Generate a scored, enriched, clustered feed for a user.
 
     Args:
-        user_id:       The authenticated user's ID (used for interest lookup).
-        source_filter: Limit to one source type ('news', 'video', 'discussion').
-        sort_by:       Sort order — 'relevance' or 'recency'.
-        search_query:  Override interests with a manual search term.
+        user_id:        The authenticated user's ID (used for interest lookup).
+        source_filter:  Limit to one source type ('news', 'video', 'discussion').
+        sort_by:        Sort order — 'relevance', 'recency', or 'popularity'.
+        search_query:   Override interests with a manual search term.
+        freshness_days: If set, only keep items published in the last N days.
 
     Returns:
         List of story dicts, each containing a list of enriched items.
@@ -79,6 +95,13 @@ def generate_feed(
             raw_items.extend(
                 _safe_fetch(fetch_reddit, q, f"reddit_{q}")
             )
+
+    # drop anything older than the freshness window before doing any work
+    if freshness_days:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=freshness_days)
+        raw_items = [
+            it for it in raw_items if _within_window(it.get("published_at"), cutoff)
+        ]
 
     enriched = []
     for item in raw_items:
@@ -112,6 +135,7 @@ def generate_feed(
     stories = cluster_items(enriched, threshold=0.3)
 
     if sort_by == "recency":
+        # newest story first, by the most recent item it contains
         stories.sort(
             key=lambda s: max(
                 [it.get("published_at", "") for it in s.get("items", [])],
@@ -119,7 +143,18 @@ def generate_feed(
             ),
             reverse=True
         )
+    elif sort_by == "popularity":
+        # most engaged story first, by its most popular item
+        stories.sort(
+            key=lambda s: max(
+                [popularity(it.get("metrics", {}), it.get("source_type", ""))
+                 for it in s.get("items", [])],
+                default=0.0
+            ),
+            reverse=True
+        )
     else:
+        # default: highest relevance score first
         stories.sort(
             key=lambda s: max(
                 [it.get("relevance_score", 0.0) for it in s.get("items", [])],

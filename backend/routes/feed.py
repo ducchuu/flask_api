@@ -1,21 +1,60 @@
-from flask import Blueprint, request, jsonify
+"""Feed query endpoint — the read-only query service for the dashboard.
+
+Exposes GET /api/items, which returns the scored and clustered feed for the
+logged-in user. Supports filtering by source type and a freshness window,
+a free-text search query, and choosing the sort order.
+"""
+from typing import Any
+
+from flask import Blueprint, g, request, jsonify
+
+from backend.auth import require_auth
 from backend.services.pipeline import generate_feed
-#from backend.auth import require_auth # once authentication is done
 
 bp = Blueprint("feed", __name__, url_prefix="/api")
 
+# sort orders we accept; anything else falls back to "relevance"
+ALLOWED_SORTS = ("relevance", "recency", "popularity")
+
+
 @bp.route("/items", methods=["GET"])
-#@require_auth
-def get_items():
+@require_auth
+def get_items() -> Any:
+    """Return the personalized feed for the logged-in user.
+
+    Query params (all optional):
+        source: one of 'news', 'video', 'discussion' to show only that type.
+        sort:   'relevance' (default), 'recency', or 'popularity'.
+        query:  free-text search term that overrides the user's interests.
+        days:   freshness window — only keep items from the last N days.
+
+    Returns:
+        200 with a JSON list of story dicts, or 500 if generation fails.
+    """
     source = request.args.get("source")
-    sort = request.args.get("sort", "relevance")
     query = request.args.get("query")
-    
-    #user_id = getattr(g, "user_id", None) # once authentication is done
-    user_id = 1 # only now for testing
-    
+
+    # only accept known sort orders, otherwise default to relevance
+    sort = request.args.get("sort", "relevance")
+    if sort not in ALLOWED_SORTS:
+        sort = "relevance"
+
+    # freshness window in days; ignore it if it is missing or not positive
+    days = request.args.get("days", type=int)
+    if days is not None and days <= 0:
+        days = None
+
+    # user_id is set by @require_auth from the bearer token
+    user_id = g.user_id
+
     try:
-        feed = generate_feed(user_id=user_id, source_filter=source, sort_by=sort, search_query=query)
+        feed = generate_feed(
+            user_id=user_id,
+            source_filter=source,
+            sort_by=sort,
+            search_query=query,
+            freshness_days=days,
+        )
         return jsonify(feed), 200
     except Exception as e:
         return jsonify({"error": "Failed to generate feed", "details": str(e)}), 500

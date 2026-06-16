@@ -179,6 +179,41 @@ def test_search_query_overrides_default_interests(mock_fetch):
 
 
 @patch('backend.services.pipeline.fetch_with_cache')
+def test_freshness_window_drops_old_items(mock_fetch):
+    """
+    items older than the freshness window should be filtered out
+    """
+    mock_fetch.return_value = [
+        _make_raw_item(id="old", published_at="2000-01-01T00:00:00+00:00",
+                       text="very old article about tech"),
+    ]
+
+    stories = generate_feed(user_id=1, search_query="test", freshness_days=7)
+
+    assert stories == []
+
+
+@patch('backend.services.pipeline.fetch_with_cache')
+def test_sort_by_popularity(mock_fetch):
+    """
+    with popularity sorting the most engaged story should come first
+    """
+    # different keywords so the two items land in separate stories
+    mock_fetch.return_value = [
+        _make_raw_item(id="quiet", text="gardening tips beginners roses",
+                       metrics={"shares": 1}),
+        _make_raw_item(id="viral", text="spacecraft rocket launch orbit",
+                       metrics={"shares": 90000}),
+    ]
+
+    stories = generate_feed(user_id=1, sort_by="popularity", search_query="test")
+
+    # the viral item's story should be ranked ahead of the quiet one
+    ids = [it["id"] for s in stories for it in s["items"]]
+    assert ids.index("viral") < ids.index("quiet")
+
+
+@patch('backend.services.pipeline.fetch_with_cache')
 def test_video_items_use_duration_for_read_time(mock_fetch):
     """
     checking if item is used correctly so that is duration is used for read_time, not counting words
