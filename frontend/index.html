@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+  <!-- Three.js (global build) for the grainy gradient 3D blobs. App degrades to a CSS blob if it fails to load. -->
+  <script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
+</head>
+<body>
+  <!-- global film-grain overlay -->
+  <div class="grain" aria-hidden="true"></div>
+  <!-- ambient grainy gradient glows that sit behind everything -->
+  <div class="ambient" aria-hidden="true">
+    <span class="glow g1"></span><span class="glow g2"></span><span class="glow g3"></span>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="app"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
