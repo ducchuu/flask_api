@@ -27,7 +27,9 @@ def fetch_lemmy(query: str) -> List[Dict[str, Any]]:
         "q": query,
         "type_": "Posts",
         "limit": 10,
-        "sort": "TopAll"
+        # "TopMonth" surfaces recent, well-engaged posts. "TopAll" (the old
+        # value) returned years-old viral threads, which made the feed stale.
+        "sort": "TopMonth",
     }
 
     try:

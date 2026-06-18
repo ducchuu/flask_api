@@ -27,7 +27,7 @@ def fetch_gnews(query: str) -> List[Dict[str, Any]]:
     api_key = os.getenv("GNEWS_API_KEY", "")
     url = "https://gnews.io/api/v4/search"
     headers = {"User-Agent": "PulseAggregator/1.0"}
-    params = {"q": query, "token": api_key}
+    params = {"q": query, "token": api_key, "lang": "en"}
     
     try:
         response = requests.get(url, headers=headers, params=params, timeout=5)

@@ -1,16 +1,76 @@
 {
   "articles": [
     {
-      "title": "A Sample GNews Article",
-      "description": "This is a placeholder description.",
-      "content": "This is placeholder content for GNews.",
-      "url": "https://example.com/gnews",
-      "image": "https://example.com/image.png",
-      "publishedAt": "2026-06-16T12:00:00Z",
-      "source": {
-        "name": "FixtureNews",
-        "url": "https://example.com"
-      }
+      "title": "Atlas-3 language model released, tops industry benchmarks",
+      "description": "The new Atlas-3 model sets records across reasoning and coding benchmarks.",
+      "content": "The Atlas-3 language model launched today, with the lab claiming the model tops major reasoning and coding benchmarks. Researchers say the model release marks a step change for AI assistants.",
+      "url": "https://en.wikipedia.org/wiki/Large_language_model",
+      "image": "https://picsum.photos/seed/atlas/600/300",
+      "publishedAt": "2026-06-17T09:00:00Z",
+      "source": { "name": "The Verge", "url": "https://theverge.com" }
+    },
+    {
+      "title": "Nations reach climate finance deal at summit",
+      "description": "Negotiators agreed a climate finance package after late-night talks.",
+      "content": "Nations reached a climate finance deal at the summit, pledging funds to help developing countries adapt. Climate groups called the finance agreement a start but warned more is needed.",
+      "url": "https://en.wikipedia.org/wiki/Climate_finance",
+      "image": "https://picsum.photos/seed/climate/600/300",
+      "publishedAt": "2026-06-16T18:30:00Z",
+      "source": { "name": "Reuters", "url": "https://reuters.com" }
+    },
+    {
+      "title": "Mars sample-return mission gets green light",
+      "description": "The agency approved the long-delayed Mars sample return mission.",
+      "content": "The Mars sample return mission received approval, clearing the way to bring Mars rock samples back to Earth. The Mars mission has faced budget and schedule pressure for years.",
+      "url": "https://en.wikipedia.org/wiki/Mars_sample-return_mission",
+      "image": "https://picsum.photos/seed/mars/600/300",
+      "publishedAt": "2026-06-15T14:10:00Z",
+      "source": { "name": "BBC", "url": "https://bbc.com" }
+    },
+    {
+      "title": "Regulators weigh new rules for frontier AI models",
+      "description": "Lawmakers debate oversight for the most capable AI models.",
+      "content": "Regulators are weighing rules for frontier AI models, focusing on safety testing and transparency. The proposed AI regulation would require labs to disclose model evaluations.",
+      "url": "https://en.wikipedia.org/wiki/Regulation_of_artificial_intelligence",
+      "image": "https://picsum.photos/seed/airegs/600/300",
+      "publishedAt": "2026-06-14T11:00:00Z",
+      "source": { "name": "TechCrunch", "url": "https://techcrunch.com" }
+    },
+    {
+      "title": "Fusion startup hits net-energy milestone",
+      "description": "A private fusion company reports a net-energy result.",
+      "content": "A fusion startup hit a net-energy milestone, saying its reactor produced more energy than it consumed. The fusion result, if confirmed, would be a milestone for clean energy.",
+      "url": "https://en.wikipedia.org/wiki/Fusion_power",
+      "image": "https://picsum.photos/seed/fusion/600/300",
+      "publishedAt": "2026-06-13T08:45:00Z",
+      "source": { "name": "Wired", "url": "https://wired.com" }
+    },
+    {
+      "title": "Major breach exposes millions of records",
+      "description": "A large data breach has exposed millions of user records.",
+      "content": "A major breach exposed millions of records, security researchers said. The breach included emails and hashed passwords; users are urged to reset credentials.",
+      "url": "https://en.wikipedia.org/wiki/Data_breach",
+      "image": "https://picsum.photos/seed/breach/600/300",
+      "publishedAt": "2026-06-12T16:20:00Z",
+      "source": { "name": "Ars Technica", "url": "https://arstechnica.com" }
+    },
+    {
+      "title": "Quantum chip demonstrates error correction at scale",
+      "description": "Researchers show quantum error correction on a larger chip.",
+      "content": "A quantum chip demonstrated error correction at scale, a key step toward useful quantum computing. The quantum result reduces error rates as more qubits are added.",
+      "url": "https://en.wikipedia.org/wiki/Quantum_error_correction",
+      "image": "https://picsum.photos/seed/quantum/600/300",
+      "publishedAt": "2026-06-11T10:05:00Z",
+      "source": { "name": "Nature", "url": "https://nature.com" }
+    },
+    {
+      "title": "Humanoid robots enter warehouse trials",
+      "description": "Humanoid robots begin real-world warehouse trials.",
+      "content": "Humanoid robots entered warehouse trials this week, handling picking and sorting tasks. The robots are being tested alongside human workers in live facilities.",
+      "url": "https://en.wikipedia.org/wiki/Humanoid_robot",
+      "image": "https://picsum.photos/seed/robots/600/300",
+      "publishedAt": "2026-06-16T07:30:00Z",
+      "source": { "name": "The Guardian", "url": "https://theguardian.com" }
     }
   ]
 }

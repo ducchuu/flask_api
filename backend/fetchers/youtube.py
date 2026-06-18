@@ -34,6 +34,7 @@ def fetch_youtube(query: str) -> List[Dict[str, Any]]:
         "type": "video",
         "maxResults": 10,
         "key": api_key,
+        "relevanceLanguage": "en",
     }
     
     try:

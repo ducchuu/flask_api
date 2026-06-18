@@ -20,6 +20,19 @@ STOPWORDS = {
     "do", "does", "did", "has", "have", "had", "not", "no", "so",
     "if", "then", "than", "there", "here", "what", "which", "who",
     "will", "would", "can", "could", "should", "about",
+    # generic filler that adds noise to topics/clustering
+    "said", "says", "say", "more", "most", "just", "like", "over", "also",
+    "after", "before", "into", "now", "new", "via", "amp", "get", "got",
+    "make", "made", "one", "two", "how", "why", "when", "your", "all",
+    "any", "some", "such",
+    # web/markup fragments
+    "http", "https", "www", "com", "org", "net", "html",
+    # months / days / date words (kill "#june"-style tags)
+    "january", "february", "march", "april", "may", "june", "july", "august",
+    "september", "october", "november", "december",
+    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct",
+    "nov", "dec", "monday", "tuesday", "wednesday", "thursday", "friday",
+    "saturday", "sunday", "today", "yesterday", "tomorrow", "week", "year", "years",
 }
 
 # curated trust lists: source name -> credibility tier, one table per source type

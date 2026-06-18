@@ -6,6 +6,7 @@ pipeline continues with results from the remaining sources.
 """
 
 import json
+import re
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 
@@ -35,6 +36,37 @@ DEFAULT_WEIGHTS = {
 }
 # Default per-source-type preference, feeding the "source" component.
 DEFAULT_SOURCE_PREFS = {"news": 0.8, "video": 0.5, "discussion": 0.7}
+
+# Most interests that drive a single feed fetch. Beyond this the combined query
+# gets unwieldy and per-topic results get too thin, so we use the first N.
+MAX_FEED_TOPICS = 10
+
+# Tiny set of very common English words used as a cheap language signal.
+_COMMON_EN = {
+    "the", "a", "an", "and", "or", "to", "of", "in", "is", "are", "for", "on",
+    "with", "that", "this", "it", "as", "at", "by", "you", "we", "be", "how",
+    "what", "why", "new", "from", "has", "have", "will", "your", "about",
+}
+
+
+def _looks_english(text: Optional[str]) -> bool:
+    """Cheap heuristic to keep English content (Lemmy has no language filter).
+
+    Drops text written in a non-Latin script, or Latin-script text (e.g.
+    German/Spanish) that contains none of the most common English words. Short
+    or empty text is kept, since there isn't enough signal to judge.
+    """
+    if not text or not text.strip():
+        return True
+    letters = [c for c in text if c.isalpha()]
+    if letters:
+        latin = sum(1 for c in letters if ord(c) < 0x250)  # Latin + accents
+        if latin / len(letters) < 0.65:
+            return False
+    words = re.findall(r"[a-zA-Z]+", text.lower())
+    if len(words) >= 6:
+        return any(w in _COMMON_EN for w in words)
+    return True
 
 
 def _merge_overrides(defaults: Dict[str, float], raw: Optional[str]) -> Dict[str, float]:
@@ -176,19 +208,30 @@ def generate_feed(
         user_interests = queries
     raw_items: List[Dict[str, Any]] = []
 
-    for q in queries:
-        if not source_filter or source_filter == "news":
-            raw_items.extend(
-                _safe_fetch(fetch_gnews, q, f"gnews_{q}")
-            )
-        if not source_filter or source_filter == "video":
-            raw_items.extend(
-                _safe_fetch(fetch_youtube, q, f"youtube_{q}")
-            )
-        if not source_filter or source_filter == "discussion":
-            raw_items.extend(
-                _safe_fetch(fetch_lemmy, q, f"lemmy_{q}")
-            )
+    # Combine the user's interests into ONE OR-query per source. Firing one
+    # request per interest trips the free-tier burst limits, so a single query
+    # keeps the feed to ~3 requests total regardless of how many topics the
+    # user follows (no pre-warming needed). We cap the number of topics that
+    # drive fetching so the query stays a sane length and results aren't spread
+    # too thin; quotes are stripped so an odd custom topic can't break the query.
+    fetch_topics = [q.replace('"', "").strip() for q in queries[:MAX_FEED_TOPICS]]
+    fetch_topics = [q for q in fetch_topics if q] or ["news"]
+    combined = " OR ".join(f'"{q}"' for q in fetch_topics)
+
+    if not source_filter or source_filter == "news":
+        raw_items.extend(_safe_fetch(fetch_gnews, combined, f"gnews_{combined}"))
+    if not source_filter or source_filter == "video":
+        raw_items.extend(_safe_fetch(fetch_youtube, combined, f"youtube_{combined}"))
+    if not source_filter or source_filter == "discussion":
+        # Lemmy's search doesn't understand the OR-syntax (it treats it as
+        # literal text) and it's keyless anyway, so query it per topic.
+        for q in fetch_topics:
+            raw_items.extend(_safe_fetch(fetch_lemmy, q, f"lemmy_{q}"))
+
+    # keep only English-looking items. GNews/YouTube are queried with an English
+    # language hint, but Lemmy has no such filter, so drop obviously non-English
+    # posts (judged on the title).
+    raw_items = [it for it in raw_items if _looks_english(it.get("title", ""))]
 
     # drop anything older than the freshness window before doing any work
     if freshness_days:

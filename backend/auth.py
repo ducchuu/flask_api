@@ -54,11 +54,18 @@ def _serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
 
 
+# Tokens stay valid for 30 days. Whether a session actually persists across
+# browser restarts is the client's choice ("Remember me" -> localStorage vs
+# sessionStorage); the server just bounds the maximum lifetime.
+TOKEN_MAX_AGE = 60 * 60 * 24 * 30
+
+
 def generate_token(user_id: int) -> str:
     """Create a signed, expiring token for a given user.
 
     Uses itsdangerous URLSafeTimedSerializer - the payload is signed with
-    SECRET_KEY and expires after 1 hour. No token state is stored server-side.
+    SECRET_KEY and expires after TOKEN_MAX_AGE. No token state is stored
+    server-side.
 
     Args:
         user_id: The primary key of the authenticated user.
@@ -80,7 +87,7 @@ def verify_token(token: str) -> int | None:
         None if it is expired or has been tampered with.
     """
     try:
-        data = _serializer().loads(token, salt="auth-token", max_age=3600)
+        data = _serializer().loads(token, salt="auth-token", max_age=TOKEN_MAX_AGE)
         return int(data["user_id"])
     except SignatureExpired:
         return None

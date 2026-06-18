@@ -44,6 +44,14 @@ def get_items() -> Any:
     if days is not None and days <= 0:
         days = None
 
+    # ?refresh=1 pulls fresh content: clear the cache so the pipeline re-fetches
+    # from the live sources instead of serving cached results.
+    if request.args.get("refresh"):
+        from backend.db import get_db
+        db = get_db()
+        db.execute("DELETE FROM api_cache")
+        db.commit()
+
     # user_id and the User model are set by @require_auth from the bearer token
     user_id = g.user_id
     user = g.current_user

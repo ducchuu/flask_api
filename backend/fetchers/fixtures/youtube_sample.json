@@ -1,23 +1,70 @@
 {
   "items": [
     {
-      "id": {
-        "videoId": "fixture123"
-      },
+      "id": "wjZofJX0v4M",
       "snippet": {
-        "title": "A Sample YouTube Video",
-        "description": "This is a placeholder description for YouTube.",
-        "publishedAt": "2026-06-16T12:00:00Z",
-        "channelTitle": "FixtureChannel"
+        "title": "Transformers, the tech behind LLMs",
+        "description": "How the transformer architecture powers modern AI language models like GPT. A visual walkthrough of attention and how a language model predicts text.",
+        "publishedAt": "2026-06-17T10:30:00Z",
+        "channelTitle": "3Blue1Brown"
       },
-      "statistics": {
-        "viewCount": "100",
-        "likeCount": "10",
-        "commentCount": "1"
+      "statistics": { "viewCount": "3200000", "likeCount": "120000", "commentCount": "4100" },
+      "contentDetails": { "duration": "PT27M14S" }
+    },
+    {
+      "id": "aircAruvnKk",
+      "snippet": {
+        "title": "But what is a neural network?",
+        "description": "An intuitive introduction to neural networks, the model at the heart of modern AI and deep learning.",
+        "publishedAt": "2026-06-16T09:00:00Z",
+        "channelTitle": "3Blue1Brown"
       },
-      "contentDetails": {
-        "duration": "PT5M"
-      }
+      "statistics": { "viewCount": "16000000", "likeCount": "410000", "commentCount": "12000" },
+      "contentDetails": { "duration": "PT19M13S" }
+    },
+    {
+      "id": "kCc8FmEb1nY",
+      "snippet": {
+        "title": "Let's build GPT: from scratch, in code, spelled out",
+        "description": "Build a GPT language model from scratch in code. A hands-on look at how a transformer AI model is trained.",
+        "publishedAt": "2026-06-15T12:15:00Z",
+        "channelTitle": "Andrej Karpathy"
+      },
+      "statistics": { "viewCount": "5400000", "likeCount": "180000", "commentCount": "6800" },
+      "contentDetails": { "duration": "PT1H56M20S" }
+    },
+    {
+      "id": "zjkBMFhNj_g",
+      "snippet": {
+        "title": "Intro to Large Language Models",
+        "description": "A one hour general-audience introduction to large language models: what an LLM is, how the model is trained, and where AI is heading.",
+        "publishedAt": "2026-06-14T14:00:00Z",
+        "channelTitle": "Andrej Karpathy"
+      },
+      "statistics": { "viewCount": "2700000", "likeCount": "95000", "commentCount": "3300" },
+      "contentDetails": { "duration": "PT59M48S" }
+    },
+    {
+      "id": "5C_HPTJg5ek",
+      "snippet": {
+        "title": "Rust in 100 Seconds",
+        "description": "The Rust programming language explained in 100 seconds for developers.",
+        "publishedAt": "2026-06-13T11:20:00Z",
+        "channelTitle": "Fireship"
+      },
+      "statistics": { "viewCount": "2100000", "likeCount": "88000", "commentCount": "2400" },
+      "contentDetails": { "duration": "PT2M30S" }
+    },
+    {
+      "id": "1VPfZ_XzisU",
+      "snippet": {
+        "title": "The Bizarre Behavior of Rotating Bodies",
+        "description": "The physics of rotating bodies and the Dzhanibekov effect, explained with real demonstrations from science.",
+        "publishedAt": "2026-06-12T16:00:00Z",
+        "channelTitle": "Veritasium"
+      },
+      "statistics": { "viewCount": "9300000", "likeCount": "260000", "commentCount": "14000" },
+      "contentDetails": { "duration": "PT12M37S" }
     }
   ]
 }

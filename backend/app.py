@@ -40,10 +40,8 @@ def _register_routes(app: Flask) -> None:
         """liveness probe used by the frontend and by smoke tests"""
         return jsonify({"status": "ok"})
 
-    @app.get("/")
-    def index() -> Any:
-        """Placeholder home route so the root URL returns 200 until the frontend lands."""
-        return "Test home page URL good", 200 # added just for a test, instaed of 404 error on home page because of no frontend implementation
+    # NOTE: the root "/" + static file serving for the frontend lives in
+    # run_app.py (frontend branch) so the SPA and the API share an origin.
 
     from backend.routes.interests import bp as interests_bp
     from backend.routes.feed import bp as feed_bp
@@ -52,6 +50,8 @@ def _register_routes(app: Flask) -> None:
     from backend.routes.items import bp as items_bp
     from backend.routes.collections import bp as collections_bp
     from backend.routes.feedback import bp as feedback_bp
+    from backend.routes.item_write import bp as item_write_bp
+    from backend.routes.oauth import bp as oauth_bp
 
     # all the blueprints imported here for simplicity and then directly registered
     app.register_blueprint(interests_bp)
@@ -61,6 +61,8 @@ def _register_routes(app: Flask) -> None:
     app.register_blueprint(items_bp)
     app.register_blueprint(collections_bp)
     app.register_blueprint(feedback_bp)
+    app.register_blueprint(item_write_bp)  # frontend: POST /api/items upsert
+    app.register_blueprint(oauth_bp)       # frontend: Google OAuth sign-in
 
 
 def _register_error_handlers(app: Flask) -> None:

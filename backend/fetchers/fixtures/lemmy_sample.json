@@ -2,14 +2,91 @@
   "posts": [
     {
       "post": {
-        "id": 12345,
-        "name": "Sample AI Post",
-        "body": "This is a test discussion about AI.",
-        "ap_id": "https://lemmy.ml/post/12345",
-        "published": "2026-06-16T12:00:00Z"
+        "id": 90001,
+        "name": "Atlas-3 benchmarks: is this real progress or hype?",
+        "body": "The Atlas-3 model release tops the benchmarks, but how much of the model improvement is real reasoning vs benchmark tuning? Curious what people think about the new model.",
+        "ap_id": "https://en.wikipedia.org/wiki/Large_language_model",
+        "published": "2026-06-17T11:15:00Z"
       },
-      "creator": {"name": "TestUser"},
-      "community": {"name": "technology"}
+      "creator": { "name": "quanta_fan" },
+      "community": { "name": "machinelearning" }
+    },
+    {
+      "post": {
+        "id": 90002,
+        "name": "Climate finance deal - enough, or greenwashing?",
+        "body": "Nations reached a climate finance deal at the summit. Is the finance pledge actually enough, or is this climate greenwashing? Discuss.",
+        "ap_id": "https://en.wikipedia.org/wiki/Climate_finance",
+        "published": "2026-06-16T19:40:00Z"
+      },
+      "creator": { "name": "green_thumb" },
+      "community": { "name": "climate" }
+    },
+    {
+      "post": {
+        "id": 90003,
+        "name": "Frontier AI regulation megathread",
+        "body": "Regulators are weighing rules for frontier AI models. What should good AI regulation look like, and will it slow model releases?",
+        "ap_id": "https://en.wikipedia.org/wiki/Regulation_of_artificial_intelligence",
+        "published": "2026-06-14T12:30:00Z"
+      },
+      "creator": { "name": "policy_wonk" },
+      "community": { "name": "technology" }
+    },
+    {
+      "post": {
+        "id": 90004,
+        "name": "Mars sample return mission approved - megathread",
+        "body": "The Mars sample return mission got the green light. Megathread for the Mars mission timeline, science goals, and budget questions.",
+        "ap_id": "https://en.wikipedia.org/wiki/Mars_sample-return_mission",
+        "published": "2026-06-15T15:00:00Z"
+      },
+      "creator": { "name": "orbital_mechanic" },
+      "community": { "name": "space" }
+    },
+    {
+      "post": {
+        "id": 90005,
+        "name": "Breach exposed millions - how to protect yourself",
+        "body": "After the data breach exposed millions of records, here's a practical checklist to protect your accounts after a breach: reset passwords, enable 2FA, check for reuse.",
+        "ap_id": "https://en.wikipedia.org/wiki/Data_breach",
+        "published": "2026-06-12T17:10:00Z"
+      },
+      "creator": { "name": "sec_ops" },
+      "community": { "name": "cybersecurity" }
+    },
+    {
+      "post": {
+        "id": 90006,
+        "name": "Fusion net-energy milestone - explain like I'm 5",
+        "body": "A fusion startup says it hit a net-energy milestone. Can someone explain the fusion result simply? Is this the energy breakthrough we keep hearing about?",
+        "ap_id": "https://en.wikipedia.org/wiki/Fusion_power",
+        "published": "2026-06-13T09:30:00Z"
+      },
+      "creator": { "name": "curious_cat" },
+      "community": { "name": "science" }
+    },
+    {
+      "post": {
+        "id": 90007,
+        "name": "Quantum error correction explained by researchers",
+        "body": "Researchers showed quantum error correction at scale on a new quantum chip. Thread where people who work on quantum computing answer questions.",
+        "ap_id": "https://en.wikipedia.org/wiki/Quantum_error_correction",
+        "published": "2026-06-11T11:00:00Z"
+      },
+      "creator": { "name": "qubit_qween" },
+      "community": { "name": "physics" }
+    },
+    {
+      "post": {
+        "id": 90008,
+        "name": "Humanoid robots in warehouses - good or bad for workers?",
+        "body": "Humanoid robots are entering warehouse trials. Are these robots going to help workers or replace them? Discussion on the warehouse robot trials.",
+        "ap_id": "https://en.wikipedia.org/wiki/Humanoid_robot",
+        "published": "2026-06-16T08:20:00Z"
+      },
+      "creator": { "name": "union_dev" },
+      "community": { "name": "technology" }
     }
   ]
 }
