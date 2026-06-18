@@ -11,6 +11,18 @@ function parse(json, fallback) {
   try { return { ...fallback, ...(JSON.parse(json || "{}")) }; } catch { return { ...fallback }; }
 }
 
+/* Turn a 0–1 weight into a plain-language label. The slider still stores the
+   underlying decimal (sent to the backend unchanged); this is display only. */
+function weightLabel(val) {
+  const v = +val;
+  if (v <= 0) return "Off";
+  if (v <= 0.2) return "Very low";
+  if (v <= 0.4) return "Low";
+  if (v <= 0.6) return "Medium";
+  if (v <= 0.8) return "High";
+  return "Very high";
+}
+
 export async function renderSettings(mount) {
   mount.innerHTML = `
     <div class="section-title"><h2 class="h-lg">Settings</h2></div>
@@ -105,14 +117,13 @@ function renderWeights(mount) {
     <div class="slider-row">
       <label>${label}</label>
       <input type="range" data-k="${key}" min="0" max="1" step="0.05" value="${val}"/>
-      <span class="mono tiny" id="v-${key}">${(+val).toFixed(2)}</span>
+      <span class="tiny muted" id="v-${key}" style="min-width:64px;text-align:right">${weightLabel(val)}</span>
     </div>`;
 
   card.innerHTML = `
     <h3 class="h-md" style="margin-bottom:4px">Ranking weights</h3>
     <p class="muted tiny" style="margin-bottom:16px">
-      How much each factor counts toward a story's score (relative weights).
-      <span id="wsum" class="mono"></span></p>
+      How much each factor shapes your feed.</p>
     ${slider("interest", "Interest match", weights.interest)}
     ${slider("recency", "Recency", weights.recency)}
     ${slider("popularity", "Popularity", weights.popularity)}
@@ -124,18 +135,9 @@ function renderWeights(mount) {
     ${slider("discussion", "Discussion", prefs.discussion)}
     <button class="btn btn-primary btn-block" id="save-weights" style="margin-top:12px">Save & re-rank</button>`;
 
-  const sumEl = card.querySelector("#wsum");
-  const updateSum = () => {
-    const total = ["interest", "recency", "popularity", "source"]
-      .reduce((s, k) => s + parseFloat(card.querySelector(`[data-k="${k}"]`).value), 0);
-    sumEl.textContent = `· total ${total.toFixed(2)}`;
-  };
-  updateSum();
-
   card.querySelectorAll('input[type="range"]').forEach((r) =>
     r.addEventListener("input", () => {
-      card.querySelector(`#v-${r.dataset.k}`).textContent = (+r.value).toFixed(2);
-      updateSum();
+      card.querySelector(`#v-${r.dataset.k}`).textContent = weightLabel(r.value);
     }));
 
   card.querySelector("#save-weights").addEventListener("click", async () => {

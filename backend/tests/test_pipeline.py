@@ -6,6 +6,7 @@ from backend.services.pipeline import (
     DEFAULT_WEIGHTS,
     DEFAULT_SOURCE_PREFS,
 )
+from backend.tests.conftest import make_user
 
 
 def _make_raw_item(source_type="news", source_name="Tech Site", title="AI News",
@@ -303,3 +304,64 @@ def test_user_weights_change_relevance_score(mock_fetch):
     score_heavy = pop_heavy[0]["items"][0]["relevance_score"]
     score_zero = pop_zero[0]["items"][0]["relevance_score"]
     assert score_heavy > score_zero
+
+
+# ---- Feedback feeds back into the feed -----------------------------------
+# These need a real (temp) DB, so they run inside the app context the route
+# always provides, unlike the context-free pipeline tests above.
+
+def _seed_item(db, external_id, title="Seed", source_type="news"):
+    """Persist a bare item row and return its id."""
+    cur = db.execute(
+        "INSERT INTO items (external_id, source_type, title, url) VALUES (?, ?, ?, ?)",
+        [external_id, source_type, title, f"https://example.com/{external_id}"],
+    )
+    db.commit()
+    return cur.lastrowid
+
+
+def _seed_feedback(db, user_id, item_id, kind):
+    db.execute(
+        "INSERT INTO feedback (user_id, item_id, kind) VALUES (?, ?, ?)",
+        [user_id, item_id, kind],
+    )
+    db.commit()
+
+
+@patch('backend.services.pipeline.fetch_with_cache')
+def test_hidden_items_are_dropped_from_feed(mock_fetch, app, db):
+    """An item the user marked 'hide' never appears in their feed again."""
+    user_id = make_user(db)
+    hidden = _seed_item(db, "hide-me", title="Unwanted")
+    _seed_feedback(db, user_id, hidden, "hide")
+
+    mock_fetch.return_value = [
+        _make_raw_item(id="hide-me", external_id="hide-me", title="Unwanted"),
+        _make_raw_item(id="keep-me", external_id="keep-me", title="Wanted"),
+    ]
+    with app.app_context():
+        stories = generate_feed(user_id=user_id, source_filter="news", search_query="news")
+
+    ext_ids = [it.get("external_id") for s in stories for it in s["items"]]
+    assert "hide-me" not in ext_ids
+    assert "keep-me" in ext_ids
+
+
+@patch('backend.services.pipeline.fetch_with_cache')
+def test_more_feedback_boosts_matching_items(mock_fetch, app, db):
+    """'more' on a topic raises the score of fresh items sharing its keywords."""
+    fan = make_user(db, "fan")
+    neutral = make_user(db, "neutral")
+    liked = _seed_item(db, "liked-1", title="Quantum computing breakthrough")
+    _seed_feedback(db, fan, liked, "more")
+
+    # fresh dict per call - the pipeline enriches items in place
+    mock_fetch.side_effect = lambda *a, **k: [
+        _make_raw_item(id="q1", external_id="q1", title="Quantum news",
+                       text="quantum computing quantum computing")
+    ]
+    with app.app_context():
+        boosted = generate_feed(user_id=fan, source_filter="news", search_query="quantum")
+        plain = generate_feed(user_id=neutral, source_filter="news", search_query="quantum")
+
+    assert boosted[0]["items"][0]["relevance_score"] > plain[0]["items"][0]["relevance_score"]

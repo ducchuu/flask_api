@@ -10,6 +10,8 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 
+from flask import has_app_context
+
 from backend.db import get_db
 
 from backend.fetchers.gnews import fetch_gnews
@@ -36,6 +38,13 @@ DEFAULT_WEIGHTS = {
 }
 # Default per-source-type preference, feeding the "source" component.
 DEFAULT_SOURCE_PREFS = {"news": 0.8, "video": 0.5, "discussion": 0.7}
+
+# How user feedback nudges the relevance score. Each item keyword that overlaps
+# with a topic the user asked "more"/"less" of shifts the score by FEEDBACK_STEP,
+# capped at FEEDBACK_MAX_SHIFT so feedback only nudges the ranking, never
+# dominates the four scored components.
+FEEDBACK_STEP = 0.05
+FEEDBACK_MAX_SHIFT = 0.15
 
 # Most interests that drive a single feed fetch. Beyond this the combined query
 # gets unwieldy and per-topic results get too thin, so we use the first N.
@@ -163,6 +172,51 @@ def _safe_fetch(fetch_fn, query: str, cache_key: str) -> List[Dict[str, Any]]:
         return []
 
 
+def _load_feedback_signals(user_id: int) -> Dict[str, Any]:
+    """Turn a user's stored feedback into signals the feed can act on.
+
+    Joins feedback back to the persisted item it refers to so we can read its
+    external id (for hiding) and its title (to learn topics from).
+
+    Returns a dict with:
+        hidden_ids:  external ids the user asked to hide -> dropped from the feed.
+        liked_kw:    keywords drawn from items the user wanted more of.
+        disliked_kw: keywords drawn from items the user wanted less of.
+    """
+    rows = get_db().execute(
+        "SELECT i.external_id AS external_id, i.title AS title, f.kind AS kind "
+        "FROM feedback f JOIN items i ON f.item_id = i.id "
+        "WHERE f.user_id = ?",
+        [user_id],
+    ).fetchall()
+
+    hidden_ids: set = set()
+    liked_kw: set = set()
+    disliked_kw: set = set()
+    for r in rows:
+        if r["kind"] == "hide":
+            if r["external_id"]:
+                hidden_ids.add(str(r["external_id"]))
+        elif r["kind"] == "more":
+            liked_kw.update(keywords(r["title"]))
+        elif r["kind"] == "less":
+            disliked_kw.update(keywords(r["title"]))
+    return {"hidden_ids": hidden_ids, "liked_kw": liked_kw, "disliked_kw": disliked_kw}
+
+
+def _feedback_shift(item_keywords: List[str], liked_kw: set, disliked_kw: set) -> float:
+    """Net relevance adjustment for one item from like/dislike keyword overlap.
+
+    Each shared keyword moves the score by FEEDBACK_STEP; boost and penalty are
+    each capped at FEEDBACK_MAX_SHIFT, so the result stays in
+    [-FEEDBACK_MAX_SHIFT, +FEEDBACK_MAX_SHIFT].
+    """
+    kw = set(item_keywords)
+    boost = min(len(kw & liked_kw) * FEEDBACK_STEP, FEEDBACK_MAX_SHIFT)
+    penalty = min(len(kw & disliked_kw) * FEEDBACK_STEP, FEEDBACK_MAX_SHIFT)
+    return boost - penalty
+
+
 def generate_feed(
     user_id: Optional[int],
     source_filter: Optional[str] = None,
@@ -206,6 +260,18 @@ def generate_feed(
     else:
         queries = ["general news"]
         user_interests = queries
+
+    # Past feedback (hide / more / less) for this user, used to drop hidden
+    # items and nudge the score of items on topics they've reacted to. Needs a
+    # DB connection, so only when we're inside an app context (always true for a
+    # real request; skipped by context-free unit tests that drive the pipeline
+    # directly).
+    feedback = (
+        _load_feedback_signals(user_id)
+        if user_id is not None and has_app_context()
+        else {"hidden_ids": set(), "liked_kw": set(), "disliked_kw": set()}
+    )
+
     raw_items: List[Dict[str, Any]] = []
 
     # Combine the user's interests into ONE OR-query per source. Firing one
@@ -232,6 +298,13 @@ def generate_feed(
     # language hint, but Lemmy has no such filter, so drop obviously non-English
     # posts (judged on the title).
     raw_items = [it for it in raw_items if _looks_english(it.get("title", ""))]
+
+    # drop items the user explicitly hid (matched on external id)
+    if feedback["hidden_ids"]:
+        raw_items = [
+            it for it in raw_items
+            if str(it.get("external_id", "")) not in feedback["hidden_ids"]
+        ]
 
     # drop anything older than the freshness window before doing any work
     if freshness_days:
@@ -264,7 +337,11 @@ def generate_feed(
 
     for item in enriched:
         score, _ = score_item(item, user_interests, weights, now)
-        item["relevance_score"] = score
+        # nudge by past feedback on this topic, keeping the score in [0, 1]
+        score += _feedback_shift(
+            item.get("keywords", []), feedback["liked_kw"], feedback["disliked_kw"]
+        )
+        item["relevance_score"] = max(0.0, min(1.0, score))
 
     stories = cluster_items(enriched, threshold=0.3)
 

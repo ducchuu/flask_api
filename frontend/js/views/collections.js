@@ -21,9 +21,7 @@ async function load(mount) {
     if (!collections.length) {
       grid.className = "";
       grid.innerHTML = emptyState("bookmark", "No collections yet",
-        "Save stories from the dashboard, or create a collection to get started.",
-        `<button class="btn btn-primary" id="empty-new">${icon("plus")} New collection</button>`);
-      grid.querySelector("#empty-new").addEventListener("click", () => createModal(mount));
+        "Save stories from the dashboard, or use “New collection” above to get started.");
       return;
     }
     grid.className = "grid grid-feed";
