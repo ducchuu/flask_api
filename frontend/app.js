@@ -750,8 +750,8 @@ async function renderDashboard() {
     $('#feed').innerHTML = stateBox('globe', 'Nothing here yet', 'Add interests in onboarding or try Search for a topic.', `<a class="btn primary" href="#/search">Go to Search</a>`);
     return;
   }
-  $('#feed').innerHTML = `<div class="grid-stories">${r.stories.map(storyCardHTML).join('')}</div>`;
-  observeReveals();
+  $('#feed').innerHTML = feedStatsHTML(r.stories) + `<div class="grid-stories">${r.stories.map((s, i) => storyCardHTML(s, i)).join('')}</div>`;
+  observeReveals(); animateCounts(); animateRings(); wireSpotlight();
 }
 
 // ===========================================================================
@@ -769,14 +769,15 @@ async function renderSearch() {
   const r = await loadFeed();
   if (!r.ok) { $('#feed').innerHTML = stateBox('warn', 'Search failed', r.msg); return; }
   if (!r.stories.length) { $('#feed').innerHTML = stateBox('search', 'No results', 'Try a broader query or a wider freshness window.'); return; }
-  $('#feed').innerHTML = `<div class="grid-stories">${r.stories.map(storyCardHTML).join('')}</div>`;
-  observeReveals();
+  $('#feed').innerHTML = `<div class="grid-stories">${r.stories.map((s, i) => storyCardHTML(s, i)).join('')}</div>`;
+  observeReveals(); animateRings(); wireSpotlight();
 }
 
-function storyCardHTML(s) {
+function storyCardHTML(s, idx = 0) {
   const present = [...new Set(s.items.map((i) => i.source_type))];
+  const topRel = Math.max(0, ...s.items.map((it) => +it.relevance || 0));
   return `
-    <article class="story-card glass" data-reveal>
+    <article class="story-card glass" data-reveal style="transition-delay:${(idx * 0.06).toFixed(2)}s">
       <div class="story-top">
         <div style="min-width:0">
           <h3 data-action="open-story" data-id="${esc(s.id)}">${esc(s.title)}</h3>
@@ -785,7 +786,10 @@ function storyCardHTML(s) {
             <span class="story-meta">${s.items.length} source${s.items.length > 1 ? 's' : ''}</span>
           </div>
         </div>
-        <button class="btn sm ghost" data-action="open-story" data-id="${esc(s.id)}">Open ${ic('arrow')}</button>
+        <div class="story-top-right">
+          ${relRing(topRel)}
+          <button class="btn sm ghost" data-action="open-story" data-id="${esc(s.id)}">Open ${ic('arrow')}</button>
+        </div>
       </div>
       <div class="story-items">
         ${s.items.slice(0, 4).map(itemRowHTML).join('')}
@@ -824,6 +828,53 @@ function itemActionsHTML(id) {
     <button class="iaction" title="Hide" data-action="fb" data-kind="hide" data-item="${esc(id)}">${ic('hide')}</button>
     <button class="iaction" title="Save to collection" data-action="save" data-item="${esc(id)}">${ic('plus')}</button>
   </div>`;
+}
+
+// circular relevance gauge (0..1). animates in via animateRings()
+function relRing(score) {
+  const pct = Math.max(0, Math.min(1, score || 0));
+  const R = 17, C = 2 * Math.PI * R;
+  return `<div class="rel-ring" title="Top relevance ${Math.round(pct * 100)}%">
+    <svg viewBox="0 0 42 42">
+      <circle class="rr-bg" cx="21" cy="21" r="${R}"/>
+      <circle class="rr-fg" cx="21" cy="21" r="${R}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${C.toFixed(1)}" data-off="${(C * (1 - pct)).toFixed(1)}"/>
+    </svg>
+    <span class="rr-val">${Math.round(pct * 100)}</span>
+  </div>`;
+}
+function animateRings() {
+  requestAnimationFrame(() => document.querySelectorAll('.rr-fg').forEach((c) => { c.style.strokeDashoffset = c.dataset.off; }));
+}
+
+// at-a-glance stat strip computed from the loaded stories (no backend call)
+function feedStatsHTML(stories) {
+  const items = stories.flatMap((s) => s.items);
+  const rels = items.map((i) => +i.relevance).filter((x) => !isNaN(x));
+  const avg = rels.length ? Math.round(rels.reduce((a, b) => a + b, 0) / rels.length * 100) : 0;
+  const mix = {}; items.forEach((i) => { mix[i.source_type] = (mix[i.source_type] || 0) + 1; });
+  return `<div class="feed-stats">
+    <div class="fstat"><div class="fstat-n"><span class="countup" data-to="${stories.length}">0</span></div><div class="fstat-l">Stories</div></div>
+    <div class="fstat"><div class="fstat-n"><span class="countup" data-to="${items.length}">0</span></div><div class="fstat-l">Sources</div></div>
+    <div class="fstat"><div class="fstat-n"><span class="countup" data-to="${avg}">0</span><span class="fstat-u">%</span></div><div class="fstat-l">Avg relevance</div></div>
+    <div class="fstat fstat-mix">
+      <div class="fstat-l" style="margin-bottom:8px">Source mix</div>
+      <div class="mixbar">${['news', 'video', 'discussion'].map((t) => mix[t] ? `<span class="mb ${t}" style="flex:${mix[t]}"></span>` : '').join('')}</div>
+      <div class="mix-legend" style="margin-top:8px">${['news', 'video', 'discussion'].filter((t) => mix[t]).map((t) => `<span><i class="${t}"></i>${SOURCES[t].label} ${mix[t]}</span>`).join('')}</div>
+    </div>
+  </div>`;
+}
+
+// amber spotlight that follows the cursor across the feed cards
+function wireSpotlight() {
+  const grid = $('#feed');
+  if (!grid) return;
+  grid.addEventListener('pointermove', (e) => {
+    const card = e.target.closest('.story-card');
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    card.style.setProperty('--my', `${e.clientY - r.top}px`);
+  });
 }
 
 // ===========================================================================
@@ -970,6 +1021,7 @@ async function renderInsights() {
   app().querySelectorAll('[data-filter-source]').forEach((b) => b.onclick = () => {
     state.filters.source = b.dataset.filterSource; state.filters.query = ''; go('#/search');
   });
+  wireSpark();
   observeReveals();
 }
 function pickStats(r, key, isDay) {
@@ -998,23 +1050,65 @@ function barsHTML(data, colorFn, asFilter) {
       <span class="val">${v}</span>
     </div>`).join('');
 }
+// activity trend: scroll to zoom, drag to pan over the time window, double-click to reset
+let _spark = { entries: [], lo: 0, hi: 0 };
 function sparkHTML(data) {
   const entries = Object.entries(data).sort((a, b) => a[0].localeCompare(b[0]));
   if (entries.length < 2) return '<p style="color:var(--muted)">Not enough dated items to chart a trend yet.</p>';
-  const w = 720, h = 160, pad = 24;
-  const vals = entries.map((e) => e[1]); const max = Math.max(...vals, 1);
-  const x = (i) => pad + (i * (w - 2 * pad)) / (entries.length - 1);
+  _spark = { entries, lo: 0, hi: entries.length - 1 };
+  return `<div class="spark-wrap">
+    <svg class="spark" id="spark" viewBox="0 0 720 160" preserveAspectRatio="none" aria-label="Items published per day"></svg>
+    <div class="spark-x"><span id="sparkLo"></span><span class="spark-hint">scroll to zoom · drag to pan · double-click to reset</span><span id="sparkHi"></span></div>
+  </div>`;
+}
+function drawSpark() {
+  const svg = $('#spark'); if (!svg) return;
+  const { entries, lo, hi } = _spark;
+  const win = entries.slice(lo, hi + 1);
+  const w = 720, h = 160, pad = 24, n = win.length;
+  const max = Math.max(...win.map((e) => e[1]), 1);
+  const x = (i) => n <= 1 ? w / 2 : pad + (i * (w - 2 * pad)) / (n - 1);
   const y = (v) => h - pad - (v / max) * (h - 2 * pad);
-  const pts = entries.map((e, i) => `${x(i)},${y(e[1])}`).join(' ');
-  const area = `${pad},${h - pad} ${pts} ${x(entries.length - 1)},${h - pad}`;
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+  const pts = win.map((e, i) => `${x(i).toFixed(1)},${y(e[1]).toFixed(1)}`).join(' ');
+  const area = `${pad},${h - pad} ${pts} ${x(n - 1).toFixed(1)},${h - pad}`;
+  svg.innerHTML = `
     <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="rgba(123,108,255,0.38)"/><stop offset="1" stop-color="rgba(123,108,255,0)"/></linearGradient></defs>
+      <stop offset="0" stop-color="rgba(234,164,106,0.38)"/><stop offset="1" stop-color="rgba(234,164,106,0)"/></linearGradient></defs>
     <polygon points="${area}" fill="url(#sg)"></polygon>
-    <polyline points="${pts}" fill="none" stroke="var(--hl)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
-    ${entries.map((e, i) => `<circle cx="${x(i)}" cy="${y(e[1])}" r="3" fill="var(--hl)"></circle>`).join('')}
-  </svg>
-  <div style="display:flex;justify-content:space-between;color:var(--muted-2);font-size:12px"><span>${entries[0][0]}</span><span>${entries[entries.length - 1][0]}</span></div>`;
+    <polyline points="${pts}" fill="none" stroke="var(--hl)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+    ${win.map((e, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(e[1]).toFixed(1)}" r="3" fill="var(--hl)" vector-effect="non-scaling-stroke"></circle>`).join('')}`;
+  $('#sparkLo').textContent = win[0][0];
+  $('#sparkHi').textContent = win[win.length - 1][0];
+}
+function wireSpark() {
+  const svg = $('#spark'); if (!svg) return;
+  drawSpark();
+  const n = () => _spark.entries.length;
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = svg.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const span = _spark.hi - _spark.lo;
+    const focus = _spark.lo + frac * span;
+    const ns = e.deltaY < 0 ? Math.max(2, Math.round(span * 0.8)) : Math.min(n() - 1, Math.max(span + 1, Math.round(span / 0.8)));
+    let lo = Math.round(focus - frac * ns);
+    lo = Math.max(0, Math.min(n() - 1 - ns, lo));
+    _spark.lo = lo; _spark.hi = lo + ns; drawSpark();
+  }, { passive: false });
+  let dragX = null, dragLo = 0;
+  svg.addEventListener('pointerdown', (e) => { dragX = e.clientX; dragLo = _spark.lo; svg.setPointerCapture(e.pointerId); svg.classList.add('grabbing'); });
+  svg.addEventListener('pointermove', (e) => {
+    if (dragX == null) return;
+    const span = _spark.hi - _spark.lo;
+    const rect = svg.getBoundingClientRect();
+    const dIdx = Math.round((e.clientX - dragX) / rect.width * span);
+    const lo = Math.max(0, Math.min(n() - 1 - span, dragLo - dIdx));
+    _spark.lo = lo; _spark.hi = lo + span; drawSpark();
+  });
+  const end = () => { dragX = null; svg.classList.remove('grabbing'); };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  svg.addEventListener('dblclick', () => { _spark.lo = 0; _spark.hi = n() - 1; drawSpark(); });
 }
 
 // ===========================================================================
