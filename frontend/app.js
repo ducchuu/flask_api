@@ -388,7 +388,12 @@ function animateCounts() {
   }, { threshold: 0.5 });
   els.forEach((e) => io.observe(e));
 }
-function logoHTML() { return `<a class="logo" href="#/"><span class="mark"><span></span></span>Pulse</a>`; }
+function logoHTML() {
+  return `<a class="logo" href="#/"><span class="mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path class="sun" d="M5 16a7 7 0 0 1 14 0Z"/>
+    <line class="horizon" x1="2.5" y1="16" x2="21.5" y2="16"/>
+  </svg></span>Pulse</a>`;
+}
 // headline split into masked words that rise into place, staggered, on load
 function heroTitle() {
   const lines = [['Stop', 'checking.'], ['Start', 'knowing.']];
@@ -559,6 +564,49 @@ function sliderHTML(key, label, val) {
     <input type="range" min="0" max="1" step="0.05" value="${val}" data-key="${key}" />
     <span class="pct">${Math.round(val * 100)}%</span>
   </div>`;
+}
+
+function prettyDate(s) {
+  const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const [y, mo, d] = String(s || '').slice(0, 10).split('-');
+  return (d && mo && y) ? `${+d} ${m[+mo - 1]} ${y}` : '—';
+}
+
+// ---- radar / spider chart, pure SVG, no deps. values are 0..1 ----
+const RADAR = { cx: 120, cy: 120, r: 84 };
+function radarPoints(vals) {
+  const n = vals.length;
+  return vals.map((v, i) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    const rr = RADAR.r * Math.max(0.04, Math.min(1, v));
+    return [RADAR.cx + rr * Math.cos(a), RADAR.cy + rr * Math.sin(a)];
+  });
+}
+function radarSVG(items, id) {
+  const n = items.length, { cx, cy, r } = RADAR;
+  const tip = (i, rad) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / n; return [cx + rad * Math.cos(a), cy + rad * Math.sin(a)]; };
+  const fmt = (p) => p.map((x) => x.toFixed(1)).join(',');
+  const rings = [0.25, 0.5, 0.75, 1].map((f) =>
+    `<polygon class="radar-ring" points="${items.map((_, i) => fmt(tip(i, r * f))).join(' ')}" />`).join('');
+  const axes = items.map((_, i) => { const [x, y] = tip(i, r); return `<line class="radar-axis" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" />`; }).join('');
+  const labels = items.map((it, i) => {
+    const [x, y] = tip(i, r + 17);
+    const anchor = Math.abs(x - cx) < 6 ? 'middle' : (x > cx ? 'start' : 'end');
+    return `<text class="radar-lbl" x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="${anchor}">${it.label}</text>`;
+  }).join('');
+  const pts = radarPoints(items.map((it) => it.value));
+  const dots = pts.map((p) => `<circle class="radar-dot" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" />`).join('');
+  return `<svg id="${id}" class="radar" viewBox="0 0 240 240">
+    ${rings}${axes}
+    <polygon class="radar-area" points="${pts.map(fmt).join(' ')}" />
+    <g class="radar-dots">${dots}</g>${labels}
+  </svg>`;
+}
+function updateRadar(svg, vals) {
+  if (!svg) return;
+  const pts = radarPoints(vals);
+  svg.querySelector('.radar-area').setAttribute('points', pts.map((p) => p.map((x) => x.toFixed(1)).join(',')).join(' '));
+  svg.querySelectorAll('.radar-dot').forEach((d, i) => { if (pts[i]) { d.setAttribute('cx', pts[i][0].toFixed(1)); d.setAttribute('cy', pts[i][1].toFixed(1)); } });
 }
 
 // ===========================================================================
@@ -978,17 +1026,29 @@ async function renderSettings() {
   p.innerHTML = `
     <div class="page-head"><div><h1>Settings</h1><p>Your profile, interests, and how Pulse scores relevance.</p></div></div>
 
-    <div class="chart-card glass">
-      <h3>Profile</h3><p class="hint">Update your display name.</p>
-      <div style="display:flex;gap:10px;max-width:440px">
-        <input type="text" id="uname" value="${esc(state.user?.username || '')}" />
-        <button class="btn primary" data-action="save-name">Save</button>
+    <div class="chart-card glass profile-card">
+      <div class="profile-head">
+        <div class="avatar">${esc((state.user?.username || '?').trim().slice(0, 2).toUpperCase())}</div>
+        <div>
+          <h3 class="profile-name">${esc(state.user?.username || 'Your profile')}</h3>
+          <p class="hint" style="margin:2px 0 0">Member since ${prettyDate(state.user?.created_at)}</p>
+        </div>
       </div>
+      <label class="field" style="max-width:440px;margin:0">
+        <span>Display name</span>
+        <div style="display:flex;gap:10px">
+          <input type="text" id="uname" value="${esc(state.user?.username || '')}" />
+          <button class="btn primary" data-action="save-name">Save</button>
+        </div>
+      </label>
     </div>
 
     <div class="chart-card glass">
       <h3>Relevance weights</h3><p class="hint">These tune your score live. Higher means more influence.</p>
-      <div id="weights">${Object.keys(DEFAULT_WEIGHTS).map((k) => sliderHTML(k, k, w[k])).join('')}</div>
+      <div class="weights-wrap">
+        <div id="weights">${Object.keys(DEFAULT_WEIGHTS).map((k) => sliderHTML(k, k, w[k])).join('')}</div>
+        ${radarSVG(Object.keys(DEFAULT_WEIGHTS).map((k) => ({ label: k[0].toUpperCase() + k.slice(1), value: w[k] })), 'weightsRadar')}
+      </div>
       <h3 style="margin-top:18px">Source preference</h3><p class="hint">Bias the score toward sources you trust.</p>
       <div id="prefs">${['news', 'video', 'discussion'].map((k) => sliderHTML(k, SOURCES[k].label, prefs[k])).join('')}</div>
       <button class="btn primary" style="margin-top:10px" data-action="save-weights">Save and rescore</button>
@@ -1004,8 +1064,11 @@ async function renderSettings() {
       <div id="ints">${skeletons(1)}</div>
     </div>`;
 
-  app().querySelectorAll('input[type=range]').forEach((r) => r.oninput = () =>
-    r.closest('.slider-row').querySelector('.pct').textContent = `${Math.round(r.value * 100)}%`);
+  const radar = $('#weightsRadar');
+  app().querySelectorAll('input[type=range]').forEach((r) => r.oninput = () => {
+    r.closest('.slider-row').querySelector('.pct').textContent = `${Math.round(r.value * 100)}%`;
+    if (r.closest('#weights')) updateRadar(radar, Array.from(document.querySelectorAll('#weights input[type=range]')).map((s) => +s.value));
+  });
 
   const r = await api('/interests');
   const ints = r.ok ? r.data : [];
