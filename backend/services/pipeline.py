@@ -46,6 +46,13 @@ DEFAULT_SOURCE_PREFS = {"news": 0.8, "video": 0.5, "discussion": 0.7}
 FEEDBACK_STEP = 0.05
 FEEDBACK_MAX_SHIFT = 0.15
 
+# Feed selection thresholds. These decide which fetched items actually make the
+# feed; tune them against real data (lower for a fuller feed, raise to be
+# stricter).
+INTEREST_RELEVANCE_FLOOR = 0.3   # below this an item is treated as off-topic
+SUBSTANCE_MIN_WORDS = 6          # body word-count needed to count as substantive
+MIN_FEED_ITEMS = 5               # safety floor so the feed is never left empty
+
 # Most interests that drive a single feed fetch. Beyond this the combined query
 # gets unwieldy and per-topic results get too thin, so we use the first N.
 MAX_FEED_TOPICS = 10
@@ -217,6 +224,44 @@ def _feedback_shift(item_keywords: List[str], liked_kw: set, disliked_kw: set) -
     return boost - penalty
 
 
+def _has_substance(item: Dict[str, Any]) -> bool:
+    """Whether an item has enough content to be worth showing.
+
+    Keeps items with a reasonably long body, or a short one that's backed by
+    real engagement; drops empty-body stubs (common from Lemmy) and
+    contentless videos.
+    """
+    body = item.get("summary") or item.get("text") or ""
+    if len(body.split()) >= SUBSTANCE_MIN_WORDS:
+        return True
+    return popularity(item.get("metrics", {}) or {}, item.get("source_type", "")) > 0
+
+
+def _select_items(items: List[Dict[str, Any]], drop_off_topic: bool) -> List[Dict[str, Any]]:
+    """Keep substantive items, with a safety floor.
+
+    Thin items are always dropped. When ``drop_off_topic`` is set (an explicit
+    search / single-interest focus) items below INTEREST_RELEVANCE_FLOOR are
+    dropped too, for precision. The default multi-interest feed leaves off-topic
+    items in and lets ranking sink them, so it stays full. If selection leaves
+    fewer than MIN_FEED_ITEMS, the best of the dropped items (by relevance score)
+    are added back so the feed is never needlessly empty.
+    """
+    keep: List[Dict[str, Any]] = []
+    dropped: List[Dict[str, Any]] = []
+    for it in items:
+        on_topic = (not drop_off_topic) or it.get("_interest", 0.0) >= INTEREST_RELEVANCE_FLOOR
+        (keep if (_has_substance(it) and on_topic) else dropped).append(it)
+
+    if len(keep) < MIN_FEED_ITEMS and dropped:
+        dropped.sort(key=lambda it: it.get("relevance_score", 0.0), reverse=True)
+        keep.extend(dropped[: MIN_FEED_ITEMS - len(keep)])
+
+    for it in keep:
+        it.pop("_interest", None)  # internal-only signal, don't leak to the API
+    return keep
+
+
 def generate_feed(
     user_id: Optional[int],
     source_filter: Optional[str] = None,
@@ -242,24 +287,18 @@ def generate_feed(
     Returns:
         List of story dicts, each containing a list of enriched items.
     """
+    # interest_terms are the (possibly multi-word) phrases an item is scored
+    # against (the search term, or the user's interest names).
     if search_query:
-        queries = [search_query]
-        user_interests = search_query.lower().split()
+        queries = interest_terms = [search_query]
     elif user_id is not None:
         rows = get_db().execute(
-            "SELECT name, keywords_json FROM interests WHERE user_id = ?",
+            "SELECT name FROM interests WHERE user_id = ?",
             [user_id],
         ).fetchall()
-        queries = [r["name"] for r in rows] if rows else ["general news"]
-        user_interests = []
-        for r in rows:
-            kws = json.loads(r["keywords_json"] or "[]")
-            user_interests.extend(kws)
-        if not user_interests:
-            user_interests = queries  # use interest names as keywords
+        queries = interest_terms = [r["name"] for r in rows] if rows else ["general news"]
     else:
-        queries = ["general news"]
-        user_interests = queries
+        queries = interest_terms = ["general news"]
 
     # Past feedback (hide / more / less) for this user, used to drop hidden
     # items and nudge the score of items on topics they've reacted to. Needs a
@@ -336,14 +375,21 @@ def generate_feed(
     weights = resolve_weights(weights_json, source_prefs_json)
 
     for item in enriched:
-        score, _ = score_item(item, user_interests, weights, now)
+        score, breakdown = score_item(item, interest_terms, weights, now)
+        # keep the interest component around for the off-topic filter below
+        item["_interest"] = breakdown["interest"]
         # nudge by past feedback on this topic, keeping the score in [0, 1]
         score += _feedback_shift(
             item.get("keywords", []), feedback["liked_kw"], feedback["disliked_kw"]
         )
         item["relevance_score"] = max(0.0, min(1.0, score))
 
-    stories = cluster_items(enriched, threshold=0.3)
+    # Drop thin items always; drop off-topic ones only when the user has
+    # explicitly focused the feed (search box or a single chosen interest), so
+    # the default multi-interest feed stays full and relies on ranking.
+    selected = _select_items(enriched, drop_off_topic=bool(search_query))
+
+    stories = cluster_items(selected, threshold=0.3)
 
     if sort_by == "recency":
         # newest story first, by the most recent item it contains

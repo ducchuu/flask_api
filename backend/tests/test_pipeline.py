@@ -365,3 +365,60 @@ def test_more_feedback_boosts_matching_items(mock_fetch, app, db):
         plain = generate_feed(user_id=neutral, source_filter="news", search_query="quantum")
 
     assert boosted[0]["items"][0]["relevance_score"] > plain[0]["items"][0]["relevance_score"]
+
+
+# ---- Relevance + substance filtering (search-query path, no DB needed) -----
+
+@patch('backend.services.pipeline.fetch_with_cache')
+def test_off_topic_items_are_dropped(mock_fetch):
+    """A multi-word interest drops items that don't match, even if popular.
+
+    Provides enough on-topic items that the safety floor doesn't kick in, so
+    the off-topic football story is genuinely removed.
+    """
+    on_topic = [
+        _make_raw_item(id=f"vg{i}", title="Video games review",
+                       text="video games are great fun to play this year")
+        for i in range(6)
+    ]
+    football = _make_raw_item(id="football", title="Football transfer",
+                              text="football transfer window latest signing rumours",
+                              metrics={"shares": 90000})
+    mock_fetch.return_value = on_topic + [football]
+
+    stories = generate_feed(user_id=1, source_filter="news", search_query="video games")
+
+    ids = [it["id"] for s in stories for it in s["items"]]
+    assert "football" not in ids
+    assert any(i.startswith("vg") for i in ids)
+
+
+@patch('backend.services.pipeline.fetch_with_cache')
+def test_thin_items_are_dropped(mock_fetch):
+    """An on-topic but empty-body item with no engagement is dropped."""
+    substantive = [
+        _make_raw_item(id=f"vg{i}", title="Video games review",
+                       text="video games are great fun to play this year")
+        for i in range(6)
+    ]
+    thin = _make_raw_item(id="thin", title="video games", text="", metrics={"shares": 0})
+    mock_fetch.return_value = substantive + [thin]
+
+    stories = generate_feed(user_id=1, source_filter="news", search_query="video games")
+
+    ids = [it["id"] for s in stories for it in s["items"]]
+    assert "thin" not in ids
+
+
+@patch('backend.services.pipeline.fetch_with_cache')
+def test_safety_floor_keeps_feed_non_empty(mock_fetch):
+    """When everything is off-topic, the feed still returns items, not nothing."""
+    mock_fetch.return_value = [
+        _make_raw_item(id="a", text="football transfer window latest news rumours"),
+        _make_raw_item(id="b", text="cooking recipes pasta dinner ideas tonight"),
+    ]
+
+    stories = generate_feed(user_id=1, source_filter="news", search_query="quantum physics")
+
+    total = sum(len(s["items"]) for s in stories)
+    assert total == 2

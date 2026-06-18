@@ -161,7 +161,12 @@ export function storyCardHtml(story) {
       <div class="row wrap" style="gap:6px;margin-bottom:10px">
         ${sources.map(sourceBadge).join("")}
         ${count > 1 ? `<span class="chip tiny"><span class="source-count">${icon("layers")} ${count} sources</span></span>` : ""}
-        <button class="icon-btn card-save" title="Save to collection" aria-label="Save to collection" style="margin-left:auto">${icon("bookmark")}</button>
+        <div class="card-actions" style="margin-left:auto">
+          <button class="icon-btn btn-sm card-fb" data-act="more" title="More like this" aria-label="More like this">${icon("up")}</button>
+          <button class="icon-btn btn-sm card-fb" data-act="less" title="Less like this" aria-label="Less like this">${icon("down")}</button>
+          <button class="icon-btn btn-sm card-fb" data-act="hide" title="Hide this story" aria-label="Hide this story">${icon("x")}</button>
+          <button class="icon-btn btn-sm card-save" title="Save to collection" aria-label="Save to collection">${icon("bookmark")}</button>
+        </div>
       </div>
       <h3>${esc(lead.title || "Untitled")}</h3>
       <p class="summary">${esc(clip(lead.summary || lead.text, 180))}</p>

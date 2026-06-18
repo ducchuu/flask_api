@@ -1,7 +1,10 @@
 """Relevance scoring for items: interest match, recency, popularity, source preference."""
 import math
+import re
 from datetime import datetime
 from typing import Any, Optional
+
+from backend.services.enrich import STOPWORDS
 
 # rough "very popular" engagement per source type, used to normalize scores to [0, 1]
 POPULARITY_CEILING = {
@@ -10,9 +13,31 @@ POPULARITY_CEILING = {
     "discussion": 10_000,
 }
 
+# Scores for how well an interest phrase lands in an item, in priority order.
+# A multi-word interest only earns a strong score when the whole phrase (or all
+# its words) is present, so e.g. "video games" doesn't match a football story
+# just because it mentions "games".
+PHRASE_HIT = 1.0       # the exact phrase appears in the item text
+ALL_WORDS_HIT = 0.8    # every significant word appears, but not adjacent
+PARTIAL_FACTOR = 0.5   # partial overlap is scaled right down (1 of 2 words -> 0.25)
+
+
+def _significant_words(text: Optional[str]) -> list[str]:
+    """Lowercase tokens with stopwords and 1-char noise removed."""
+    if not text:
+        return []
+    return [
+        t for t in re.findall(r"[a-z0-9]+", text.lower())
+        if t not in STOPWORDS and len(t) > 1
+    ]
+
 
 def interest_match(interest_keywords: list[str], item_keywords: list[str]) -> float:
-    """calculate similarity between the user's interest keywords and the item's keywords."""
+    """calculate similarity between the user's interest keywords and the item's keywords.
+
+    Legacy keyword-set Jaccard. Superseded by ``interest_relevance`` for feed
+    scoring, but kept as a standalone utility.
+    """
     if not interest_keywords or not item_keywords:
         return 0.0
     a = {w.lower() for w in interest_keywords}
@@ -23,6 +48,41 @@ def interest_match(interest_keywords: list[str], item_keywords: list[str]) -> fl
         return 0.0
     # jaccard overlap between the interest and item keywords
     return len(intersection) / len(union)
+
+
+def interest_relevance(interest_terms: list[str], item: dict) -> float:
+    """Score how relevant an item is to any of the user's interest phrases.
+
+    Unlike ``interest_match`` this matches each (possibly multi-word) interest
+    against the item's full text - title, summary and body - plus its extracted
+    keywords, so multi-word topics like "video games" are handled precisely.
+
+    Returns the best score across all interest terms, in [0, 1].
+    """
+    corpus_text = " ".join(
+        str(item.get(field, "") or "") for field in ("title", "summary", "text")
+    ).lower()
+    corpus_words = set(_significant_words(corpus_text))
+    corpus_words.update(k.lower() for k in (item.get("keywords") or []))
+    if not corpus_words or not interest_terms:
+        return 0.0
+
+    best = 0.0
+    for term in interest_terms:
+        words = _significant_words(term)
+        if not words:
+            continue
+        # exact phrase is the strongest signal (only meaningful for multi-word)
+        if len(words) > 1 and term.strip().lower() in corpus_text:
+            best = max(best, PHRASE_HIT)
+            continue
+        matched = sum(1 for w in words if w in corpus_words)
+        if matched == len(words):
+            # every word present: full credit for single-word, near-full for multi
+            best = max(best, PHRASE_HIT if len(words) == 1 else ALL_WORDS_HIT)
+        else:
+            best = max(best, (matched / len(words)) * PARTIAL_FACTOR)
+    return best
 
 
 def recency_decay(published_at: datetime, now: datetime, half_life_hours: float = 24.0) -> float:
@@ -75,15 +135,18 @@ def _parse_published(value: Any) -> Optional[datetime]:
 
 
 def score_item(item: dict, interest_keywords: list[str], weights: dict, now: datetime) -> tuple[float, dict]:
-    """Compute the weighted relevance score for an item and return (score, breakdown)."""
-    item_keywords = item.get("keywords", []) or []
+    """Compute the weighted relevance score for an item and return (score, breakdown).
+
+    ``interest_keywords`` is the user's list of interest phrases (each may be
+    multi-word); the interest component matches them against the item's text.
+    """
     source_type = item.get("source_type", "")
     metrics = item.get("metrics", {}) or {}
     published_at = _parse_published(item.get("published_at"))
 
     # score each component on its own [0, 1] scale; missing date -> no recency
     breakdown = {
-        "interest": interest_match(interest_keywords, item_keywords),
+        "interest": interest_relevance(interest_keywords, item),
         "recency": recency_decay(published_at, now) if published_at else 0.0,
         "popularity": popularity(metrics, source_type),
         "source": source_pref(source_type, weights.get("source_prefs", {})),

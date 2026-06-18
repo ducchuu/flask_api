@@ -70,36 +70,38 @@ export function donut(container, data, { onSelect } = {}) {
   container.querySelectorAll(".donut-seg, .legend .li").forEach(wire);
 }
 
-/* ---- Bars: topic mix (sortable) ---------------------------------------- */
+/* ---- Bars: topic mix (sortable) ----------------------------------------
+   HTML rather than SVG so topic names get the card's full width (they were
+   being clipped to ~12 chars before) and ellipsize gracefully. Each row is a
+   labelled proportional bar; click filters the feed by that topic. */
 export function bars(container, data, { onSelect } = {}) {
-  container.classList.add("chart-wrap");
+  container.classList.remove("chart-wrap");
+  if (!data.length) {
+    container.innerHTML = `<p class="muted tiny" style="padding:6px 0">Not enough topics yet — add interests or get fresh sources.</p>`;
+    return;
+  }
   const max = Math.max(...data.map((d) => d.value), 1);
-  const rowH = 30, w = 320, labelW = 96, barW = w - labelW - 36;
 
   container.innerHTML = `
-    <svg class="chart-svg" viewBox="0 0 ${w} ${data.length * rowH + 6}">
-      ${data.map((d, i) => {
-        const y = i * rowH + 4, bw = (d.value / max) * barW;
-        return `<g class="bar-row" data-label="${esc(d.label)}">
-          <text x="0" y="${y + 15}" fill="var(--text-2)" font-size="12">${esc(d.label.slice(0, 12))}</text>
-          <rect x="${labelW}" y="${y + 4}" width="${barW}" height="14" rx="7" fill="var(--surface-2)"/>
-          <rect class="bar-rect" x="${labelW}" y="${y + 4}" width="${bw}" height="14" rx="7" fill="var(--primary)"/>
-          <text x="${labelW + bw + 6}" y="${y + 15}" fill="var(--text-3)" font-size="11">${d.value}</text>
-        </g>`;
+    <div class="topic-bars">
+      ${data.map((d) => {
+        const pct = Math.max(8, Math.round((d.value / max) * 100));
+        const plural = d.value === 1 ? "mention" : "mentions";
+        return `<button class="topic-row" type="button" data-label="${esc(d.label)}"
+            ${onSelect ? "" : "disabled"} title="${esc(d.label)} · ${d.value} ${plural}">
+          <span class="topic-head">
+            <span class="topic-name">${esc(d.label)}</span>
+            <span class="topic-count">${d.value}</span>
+          </span>
+          <span class="topic-track"><span class="topic-fill" style="width:${pct}%"></span></span>
+        </button>`;
       }).join("")}
-    </svg>`;
+    </div>`;
 
-  container.querySelectorAll(".bar-row").forEach((g) => {
-    const label = g.dataset.label;
-    g.style.cursor = onSelect ? "pointer" : "default";
-    g.addEventListener("mousemove", (e) => {
-      const rect = container.getBoundingClientRect();
-      const d = data.find((x) => x.label === label);
-      showTip(container, `<strong>${esc(label)}</strong> · ${d.value} mentions`, e.clientX - rect.left, e.clientY - rect.top);
-    });
-    g.addEventListener("mouseleave", () => hideTip(container));
-    if (onSelect) g.addEventListener("click", () => onSelect(label));
-  });
+  if (onSelect) {
+    container.querySelectorAll(".topic-row").forEach((row) =>
+      row.addEventListener("click", () => onSelect(row.dataset.label)));
+  }
 }
 
 /* ---- Activity over time: vertical bars with a real x/y axis ------------ */

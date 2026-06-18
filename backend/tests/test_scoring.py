@@ -60,6 +60,46 @@ class TestInterestMatch:
         assert scoring.interest_match(["Python"], ["PYTHON"]) == 1.0
 
 
+class TestInterestRelevance:
+    """Tests for the text/phrase-aware interest component."""
+
+    def test_exact_phrase_scores_top(self) -> None:
+        """The full multi-word phrase appearing in the text is the strongest match."""
+        item = {"title": "The best video games of 2026", "summary": "", "text": ""}
+        assert scoring.interest_relevance(["video games"], item) == 1.0
+
+    def test_all_words_present_but_not_adjacent(self) -> None:
+        """All significant words present (not as a phrase) earns near-full credit."""
+        item = {"title": "games console", "summary": "great for home video", "text": ""}
+        assert scoring.interest_relevance(["video games"], item) == 0.8
+
+    def test_single_shared_word_stays_weak(self) -> None:
+        """One word of a multi-word interest gives only a small partial score."""
+        item = {"title": "Football games this weekend", "summary": "", "text": ""}
+        # only "games" overlaps -> 1 of 2 words -> 0.25
+        assert scoring.interest_relevance(["video games"], item) == 0.25
+
+    def test_off_topic_scores_zero(self) -> None:
+        """An item sharing no significant words scores 0."""
+        item = {"title": "Football transfer window latest", "summary": "", "text": ""}
+        assert scoring.interest_relevance(["video games"], item) == 0.0
+
+    def test_single_word_matches_against_text(self) -> None:
+        """A single-word interest matches the item's body text, not just keywords."""
+        item = {"title": "A new release", "summary": "all about python tooling", "text": ""}
+        assert scoring.interest_relevance(["python"], item) == 1.0
+
+    def test_best_of_multiple_interests(self) -> None:
+        """The score is the best match across all of the user's interests."""
+        item = {"title": "Python tutorial", "summary": "", "text": ""}
+        assert scoring.interest_relevance(["rust", "python"], item) == 1.0
+
+    def test_empty_terms_or_empty_item(self) -> None:
+        """No interests, or an item with no text, yields 0."""
+        assert scoring.interest_relevance([], {"title": "python"}) == 0.0
+        assert scoring.interest_relevance(["python"], {}) == 0.0
+
+
 class TestRecency:
     """Tests for exponential recency decay (half-life 24h)."""
 
