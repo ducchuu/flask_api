@@ -46,7 +46,7 @@ export function donut(container, data, { onSelect } = {}) {
   };
 
   container.innerHTML = `
-    <svg class="chart-svg" viewBox="0 0 ${size} ${size}" style="max-width:220px;margin:0 auto">
+    <svg class="chart-svg" viewBox="0 0 ${size} ${size}" style="width:100%;max-width:340px;display:block;margin:0 auto">
       ${data.filter((d) => d.value > 0).map(seg).join("")}
       <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--text)" font-size="26" font-weight="800">${total}</text>
       <text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="var(--text-3)" font-size="11">items</text>

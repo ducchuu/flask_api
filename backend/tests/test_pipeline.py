@@ -228,6 +228,7 @@ def test_video_items_use_duration_for_read_time(mock_fetch):
         source_type="video",
         text="Short description",
         iso_duration="PT10M30S",
+        metrics={"views": 1000},  # real engagement so it isn't dropped as thin
     )]
 
     stories = generate_feed(user_id=1, source_filter="video", search_query="test")
@@ -412,7 +413,7 @@ def test_thin_items_are_dropped(mock_fetch):
 
 @patch('backend.services.pipeline.fetch_with_cache')
 def test_safety_floor_keeps_feed_non_empty(mock_fetch):
-    """When everything is off-topic, the feed still returns items, not nothing."""
+    """When *nothing* is relevant, fall back to the best items (don't go empty)."""
     mock_fetch.return_value = [
         _make_raw_item(id="a", text="football transfer window latest news rumours"),
         _make_raw_item(id="b", text="cooking recipes pasta dinner ideas tonight"),
@@ -422,3 +423,33 @@ def test_safety_floor_keeps_feed_non_empty(mock_fetch):
 
     total = sum(len(s["items"]) for s in stories)
     assert total == 2
+
+
+@patch('backend.services.pipeline.fetch_with_cache')
+def test_personalized_feed_drops_unrelated(mock_fetch, app, db):
+    """With an interest set, the default feed drops items unrelated to it.
+
+    Regression for a "piano" interest surfacing a WWII history post.
+    """
+    user_id = make_user(db)
+    db.execute(
+        "INSERT INTO interests (user_id, name, keywords_json) VALUES (?, ?, ?)",
+        [user_id, "piano", '["piano"]'],
+    )
+    db.commit()
+
+    relevant = [
+        _make_raw_item(id=f"p{i}", title="Piano recital",
+                       text="a beautiful piano recital performance downtown tonight")
+        for i in range(5)
+    ]
+    unrelated = _make_raw_item(id="ww2", title="History of fascism",
+                               text="how people suffered under german fascism during the war")
+    mock_fetch.return_value = relevant + [unrelated]
+
+    with app.app_context():  # personalized path: no search_query
+        stories = generate_feed(user_id=user_id, source_filter="news")
+
+    ids = [it["id"] for s in stories for it in s["items"]]
+    assert "ww2" not in ids
+    assert any(i.startswith("p") for i in ids)

@@ -237,25 +237,40 @@ def _has_substance(item: Dict[str, Any]) -> bool:
     return popularity(item.get("metrics", {}) or {}, item.get("source_type", "")) > 0
 
 
-def _select_items(items: List[Dict[str, Any]], drop_off_topic: bool) -> List[Dict[str, Any]]:
-    """Keep substantive items, with a safety floor.
+def _select_items(items: List[Dict[str, Any]], has_interests: bool) -> List[Dict[str, Any]]:
+    """Choose which fetched items make the feed.
 
-    Thin items are always dropped. When ``drop_off_topic`` is set (an explicit
-    search / single-interest focus) items below INTEREST_RELEVANCE_FLOOR are
-    dropped too, for precision. The default multi-interest feed leaves off-topic
-    items in and lets ranking sink them, so it stays full. If selection leaves
-    fewer than MIN_FEED_ITEMS, the best of the dropped items (by relevance score)
-    are added back so the feed is never needlessly empty.
+    Thin items are always dropped. When the user has interests (or is searching)
+    we keep items that clear INTEREST_RELEVANCE_FLOOR and, only if that leaves
+    too few, top up with the most-relevant *partial* matches - but items
+    unrelated to every interest (zero relevance) are never shown alongside
+    relevant ones. As a last resort, if nothing matched at all, fall back to the
+    best substantive items so the feed isn't needlessly empty. Without interests
+    (anonymous / general feed) every substantive item is kept, since there's no
+    topic to be relevant to.
     """
-    keep: List[Dict[str, Any]] = []
-    dropped: List[Dict[str, Any]] = []
-    for it in items:
-        on_topic = (not drop_off_topic) or it.get("_interest", 0.0) >= INTEREST_RELEVANCE_FLOOR
-        (keep if (_has_substance(it) and on_topic) else dropped).append(it)
+    substantive = [it for it in items if _has_substance(it)]
 
-    if len(keep) < MIN_FEED_ITEMS and dropped:
-        dropped.sort(key=lambda it: it.get("relevance_score", 0.0), reverse=True)
-        keep.extend(dropped[: MIN_FEED_ITEMS - len(keep)])
+    if not has_interests:
+        keep = substantive
+    else:
+        on_topic = [it for it in substantive
+                    if it.get("_interest", 0.0) >= INTEREST_RELEVANCE_FLOOR]
+        if len(on_topic) >= MIN_FEED_ITEMS:
+            keep = on_topic
+        else:
+            # top up with weaker partial matches (some shared words), best first
+            partial = sorted(
+                (it for it in substantive
+                 if 0.0 < it.get("_interest", 0.0) < INTEREST_RELEVANCE_FLOOR),
+                key=lambda it: it.get("_interest", 0.0), reverse=True,
+            )
+            keep = on_topic + partial[: MIN_FEED_ITEMS - len(on_topic)]
+            # nothing was relevant at all -> fall back to best items, not empty
+            if not keep:
+                keep = sorted(substantive,
+                              key=lambda it: it.get("relevance_score", 0.0),
+                              reverse=True)[:MIN_FEED_ITEMS]
 
     for it in keep:
         it.pop("_interest", None)  # internal-only signal, don't leak to the API
@@ -288,17 +303,22 @@ def generate_feed(
         List of story dicts, each containing a list of enriched items.
     """
     # interest_terms are the (possibly multi-word) phrases an item is scored
-    # against (the search term, or the user's interest names).
+    # against (the search term, or the user's interest names). has_interests is
+    # False only for the anonymous/"general news" fallback, where there's no
+    # topic to filter against.
     if search_query:
         queries = interest_terms = [search_query]
+        has_interests = True
     elif user_id is not None:
         rows = get_db().execute(
             "SELECT name FROM interests WHERE user_id = ?",
             [user_id],
         ).fetchall()
+        has_interests = bool(rows)
         queries = interest_terms = [r["name"] for r in rows] if rows else ["general news"]
     else:
         queries = interest_terms = ["general news"]
+        has_interests = False
 
     # Past feedback (hide / more / less) for this user, used to drop hidden
     # items and nudge the score of items on topics they've reacted to. Needs a
@@ -384,10 +404,9 @@ def generate_feed(
         )
         item["relevance_score"] = max(0.0, min(1.0, score))
 
-    # Drop thin items always; drop off-topic ones only when the user has
-    # explicitly focused the feed (search box or a single chosen interest), so
-    # the default multi-interest feed stays full and relies on ranking.
-    selected = _select_items(enriched, drop_off_topic=bool(search_query))
+    # Drop thin items always; when the user has interests, also drop items
+    # unrelated to every one of them (a piano fan shouldn't see WWII history).
+    selected = _select_items(enriched, has_interests)
 
     stories = cluster_items(selected, threshold=0.3)
 
