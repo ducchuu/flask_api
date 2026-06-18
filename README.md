@@ -61,7 +61,7 @@ the easiest way to try it out.
 ## Running the app
 
 ```bash
-flask --app "backend.app:create_app" run
+python run.py
 ```
 
 The server starts on http://127.0.0.1:5000. Check that it is alive:

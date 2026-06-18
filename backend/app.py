@@ -3,6 +3,7 @@ import os
 from typing import Any, Mapping
 
 from flask import Flask, jsonify
+from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
 from backend.db import close_db, init_db
@@ -22,6 +23,8 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
     )
     if config:
         app.config.update(config)
+
+    CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"])
 
     app.teardown_appcontext(close_db)
     with app.app_context():

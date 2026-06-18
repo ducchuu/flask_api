@@ -10,6 +10,7 @@ from flask import Blueprint, g, request, jsonify
 
 from backend.auth import require_auth
 from backend.services.pipeline import generate_feed
+from backend.services.persistence import save_stories
 
 bp = Blueprint("feed", __name__, url_prefix="/api")
 
@@ -59,6 +60,12 @@ def get_items() -> Any:
             weights_json=user.weights_json,
             source_prefs_json=user.source_prefs_json,
         )
+        # Persist items so collections (which JOIN on items.id) can reference them.
+        # save_stories uses INSERT OR IGNORE, so re-runs are safe and fast.
+        try:
+            save_stories(feed)
+        except Exception:
+            pass  # persistence failure must not break the feed response
         return jsonify(feed), 200
     except Exception as e:
         return jsonify({"error": "Failed to generate feed", "details": str(e)}), 500

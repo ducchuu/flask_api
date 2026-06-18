@@ -1,0 +1,238 @@
+/* ── Onboarding page ──────────────────────────────────────────────────────── */
+
+.onboarding {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.onboarding__card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-card);
+  padding: 2.5rem 2.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.onboarding__header {
+  text-align: center;
+}
+
+.onboarding__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  margin: 0 0 0.5rem;
+}
+
+.onboarding__sub {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Preset chips ─────────────────────────────────────────────────────────── */
+
+.onboarding__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  justify-content: center;
+}
+
+.onboarding__chip {
+  padding: 0.45rem 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.onboarding__chip:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+.onboarding__chip--active {
+  background: rgba(255, 107, 74, 0.12);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* ── Custom interest section ──────────────────────────────────────────────── */
+
+.onboarding__custom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.onboarding__custom-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.onboarding__custom-row {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.onboarding__custom-input {
+  flex: 1;
+  padding: 0.6rem 0.875rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.onboarding__custom-input:focus {
+  border-color: var(--accent-info);
+}
+
+.onboarding__custom-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.onboarding__custom-add {
+  padding: 0.6rem 1.125rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+
+.onboarding__custom-add:hover:not(:disabled) {
+  background: var(--bg-glass);
+  border-color: var(--accent-primary);
+}
+
+.onboarding__custom-add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.onboarding__custom-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.onboarding__chip-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 0.1rem;
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.onboarding__chip-remove:hover {
+  opacity: 1;
+}
+
+/* ── Actions ──────────────────────────────────────────────────────────────── */
+
+.onboarding__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  align-items: stretch;
+}
+
+.onboarding__btn-primary {
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.onboarding__btn-primary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.onboarding__btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.onboarding__btn-ghost {
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  text-align: center;
+}
+
+.onboarding__btn-ghost:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.onboarding__btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .onboarding__card {
+    padding: 1.75rem 1.25rem 1.5rem;
+    border-radius: 20px;
+  }
+
+  .onboarding__title {
+    font-size: 1.25rem;
+  }
+}

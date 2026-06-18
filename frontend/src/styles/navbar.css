@@ -1,0 +1,106 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 64px;
+  background: rgba(15, 20, 25, 0.72);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+html[data-theme="light"] .navbar {
+  background: rgba(244, 246, 248, 0.8);
+}
+
+.navbar__logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.navbar__logo:hover {
+  text-decoration: none;
+  color: var(--accent-primary);
+}
+
+.navbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.navbar__link {
+  padding: 0.4rem 0.875rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+}
+
+.navbar__link:hover {
+  color: var(--text-primary);
+  background: var(--bg-glass);
+  text-decoration: none;
+}
+
+.navbar__link.active {
+  color: var(--text-primary);
+}
+
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navbar__btn {
+  padding: 0.4rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-primary);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.navbar__btn:hover {
+  background: var(--bg-glass);
+}
+
+.navbar__btn--primary {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.navbar__btn--primary:hover {
+  opacity: 0.88;
+  background: var(--accent-primary);
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: color 0.15s, background 0.15s;
+}
+
+.theme-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-glass);
+}

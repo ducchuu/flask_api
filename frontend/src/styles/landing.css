@@ -1,0 +1,196 @@
+.landing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Hero ── */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 7rem 2rem 5rem;
+  position: relative;
+  overflow: hidden;
+  min-height: 480px;
+  /* No background — particles show through from the fixed layer below */
+}
+
+/* Radial glow sits between the particle canvas (z:0) and hero text (z:2) */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 500px;
+  background: radial-gradient(ellipse at center, rgba(255, 107, 74, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Lifts all hero text above the particle canvas */
+.hero__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero__headline {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  max-width: 720px;
+  margin-bottom: 1.25rem;
+}
+
+.hero__sub {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  max-width: 520px;
+  line-height: 1.65;
+  margin-bottom: 2.5rem;
+}
+
+.hero__actions {
+  display: flex;
+  gap: 0.875rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hero__cta {
+  padding: 0.875rem 2rem;
+  background: var(--accent-primary);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.hero__cta:hover {
+  opacity: 0.88;
+  text-decoration: none;
+}
+
+.hero__cta--ghost {
+  padding: 0.875rem 2rem;
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.hero__cta--ghost:hover {
+  background: var(--bg-glass);
+  text-decoration: none;
+}
+
+/* ── Features ── */
+
+.features-wrapper {
+  width: 100%;
+}
+
+.features {
+  padding: 2rem 2rem 6rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.features__label {
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 680px) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Glassmorphism card — the THEME.md recipe */
+.feature-card {
+  padding: 2rem;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: border-color 0.2s;
+}
+
+.feature-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="light"] .feature-card:hover {
+  border-color: rgba(15, 20, 25, 0.14);
+}
+
+.feature-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.feature-card__icon--coral   { background: rgba(255, 107, 74, 0.12); color: var(--accent-primary); }
+.feature-card__icon--teal    { background: rgba(61, 214, 180, 0.12); color: var(--accent-secondary); }
+.feature-card__icon--blue    { background: rgba(91, 141, 239, 0.12); color: var(--accent-info); }
+.feature-card__icon--purple  { background: rgba(160, 110, 240, 0.12); color: #A06EF0; }
+
+.feature-card__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.feature-card__body {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ── Footer ── */
+
+.landing-footer {
+  margin-top: auto;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--border-glass);
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  background: var(--bg-base);
+}

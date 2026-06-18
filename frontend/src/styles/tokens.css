@@ -1,0 +1,35 @@
+/* Dark mode — default. :root covers the case where data-theme is absent. */
+:root,
+html[data-theme="dark"] {
+  --bg-base: #0F1419;
+  --bg-surface: #1A2128;
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --text-primary: #F4F6F8;
+  --text-secondary: #9AA5B1;
+  --accent-primary: #FF6B4A;
+  --accent-secondary: #3DD6B4;
+  --accent-info: #5B8DEF;
+  --source-news: #5B8DEF;
+  --source-video: #FF6B4A;
+  --source-discussion: #3DD6B4;
+  --danger: #EF5B5B;
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.24);
+}
+
+html[data-theme="light"] {
+  --bg-base: #F4F6F8;
+  --bg-surface: #FFFFFF;
+  --bg-glass: rgba(15, 20, 25, 0.03);
+  --border-glass: rgba(15, 20, 25, 0.08);
+  --text-primary: #14181D;
+  --text-secondary: #5B6470;
+  --accent-primary: #E85A3B;
+  --accent-secondary: #1FA98A;
+  --accent-info: #3D6FD1;
+  --source-news: #3D6FD1;
+  --source-video: #E85A3B;
+  --source-discussion: #1FA98A;
+  --danger: #D14343;
+  --shadow-card: 0 8px 32px rgba(15, 20, 25, 0.06);
+}

@@ -1,15 +1,17 @@
-"""Items routes - stats endpoint with upstream error handling.
+"""Items routes - stats + item detail endpoints.
 
 Endpoints:
     GET /api/items/stats?by=source_type|interest|day
+    GET /api/items/<external_id>
 """
 
 import json
 from typing import Any
 
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, abort, g, jsonify, request
 
 from backend.auth import require_auth
+from backend.db import get_db
 from backend.services.fetchers.base import RateLimitError, UpstreamError
 
 bp = Blueprint("items", __name__)
@@ -163,3 +165,38 @@ def get_stats() -> Any:
             "message": f"Upstream source '{e.source}' is unavailable. "
                        f"Please try again later.",
         }}), 502
+
+
+@bp.get("/api/items/<string:external_id>")
+@require_auth
+def get_item(external_id: str) -> Any:
+    """Return a single item by its external_id.
+
+    The integer ``id`` in the response is the database primary key, which is
+    what the collections endpoints expect for PUT/DELETE .../items/<item_id>.
+    ``external_id`` echoes back the lookup key used in the URL.
+    """
+    row = get_db().execute(
+        "SELECT * FROM items WHERE external_id = ?", [external_id]
+    ).fetchone()
+    if row is None:
+        abort(404, description="Item not found")
+
+    return jsonify({
+        "id": row["id"],                                         # integer DB pk
+        "external_id": row["external_id"],
+        "story_id": row["story_id"],
+        "source_type": row["source_type"],
+        "source_name": row["source_name"],
+        "url": row["url"],
+        "title": row["title"],
+        "summary": row["summary"],
+        "author": row["author"],
+        "published_at": row["published_at"],
+        "keywords": json.loads(row["keywords_json"] or "[]"),
+        "metrics": json.loads(row["metrics_json"] or "{}"),
+        "read_time": row["read_time_min"],
+        "credibility": row["credibility_tier"],
+        "sentiment": row["sentiment_label"],
+        "sentiment_score": row["sentiment_score"],
+    })

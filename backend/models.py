@@ -208,6 +208,7 @@ class Item:
     """A single piece of content (news article, video or discussion)."""
 
     id: int
+    external_id: Optional[str]
     source_type: str
     source_name: Optional[str]
     url: Optional[str]
@@ -229,6 +230,7 @@ class Item:
         """Build an Item from a database row."""
         return cls(
             id=row["id"],
+            external_id=row["external_id"],
             source_type=row["source_type"],
             source_name=row["source_name"],
             url=row["url"],
@@ -250,6 +252,7 @@ class Item:
         """Serialise to a JSON-friendly dict."""
         return {
             "id": self.id,
+            "external_id": self.external_id,
             "source_type": self.source_type,
             "source_name": self.source_name,
             "url": self.url,

@@ -1,0 +1,477 @@
+/* ── Stats page ───────────────────────────────────────────────────────────── */
+
+.stats-page {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 2rem 2rem 5rem;
+}
+
+/* ── Header: sticky scroll-nav ───────────────────────────────────────────── */
+
+.stats-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+  margin-bottom: 2rem;
+}
+
+/* ── Page sections ───────────────────────────────────────────────────────── */
+
+.stats-section {
+  /* offset so the section title clears the sticky header on programmatic scroll */
+  scroll-margin-top: 80px;
+}
+
+.stats-section + .stats-section {
+  padding-top: 2rem;
+  margin-top: 0.5rem;
+}
+
+.stats-section__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin: 0 0 1rem;
+}
+
+.stats-section__error {
+  font-size: 0.875rem;
+  color: var(--danger);
+  padding: 1.5rem 0;
+}
+
+/* ── Insight stat cards ───────────────────────────────────────────────────── */
+
+.stats-insights {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.stats-insight-card {
+  flex: 1;
+  min-width: 130px;
+  padding: 0.875rem 1.1rem;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stats-insight-card__value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-insight-card__label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats-insight-card__sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.1rem;
+}
+
+/* Skeleton bars inside insight cards while loading */
+.stats-insight-skeleton {
+  border-radius: 4px;
+  background: var(--border-glass);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.stats-insight-skeleton--val {
+  height: 1.15rem;
+  width: 55%;
+  margin-bottom: 0.35rem;
+}
+
+.stats-insight-skeleton--label {
+  height: 0.7rem;
+  width: 75%;
+}
+
+/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+
+.stats-tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.stats-tab {
+  padding: 0.5rem 1.1rem;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.stats-tab:hover {
+  color: var(--text-primary);
+}
+
+.stats-tab--active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Total card (glassmorphism) ──────────────────────────────────────────── */
+
+.stats-total-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0.75rem 1.25rem;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  min-width: 120px;
+}
+
+.stats-total-card__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.stats-total-card__label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.1rem;
+}
+
+/* ── Chart area wrapper ───────────────────────────────────────────────────── */
+
+.stats-chart-area {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  padding: 1.5rem 1rem;
+  min-height: 280px;
+  display: flex;
+  align-items: stretch;
+}
+
+.stats-chart-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Center the donut chart nicely */
+.stats-chart-wrap--donut {
+  align-items: center;
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────────────────── */
+
+.stats-tooltip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.stats-tooltip__label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.2rem;
+}
+
+.stats-tooltip__val {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* ── Custom legend (donut chart) ─────────────────────────────────────────── */
+
+.stats-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+
+.stats-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.stats-legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stats-legend__name {
+  color: var(--text-primary);
+}
+
+.stats-legend__count {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+/* ── Loading skeletons ────────────────────────────────────────────────────── */
+
+.stats-skeleton {
+  width: 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 0.4; }
+}
+
+/* Donut skeleton: circle with hole */
+.stats-skeleton--donut {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 260px;
+}
+
+.stats-skeleton__ring {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 40px solid var(--border-glass);
+  background: transparent;
+}
+
+/* Bar skeleton */
+.stats-skeleton--bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  justify-content: center;
+  flex: 1;
+}
+
+.stats-skeleton__bar {
+  height: 28px;
+  border-radius: 6px;
+  background: var(--border-glass);
+}
+
+/* Line skeleton */
+.stats-skeleton--line {
+  height: 300px;
+  border-radius: 8px;
+  background: linear-gradient(
+    to right,
+    var(--border-glass) 0%,
+    var(--bg-glass) 50%,
+    var(--border-glass) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Source-type chart: side-by-side donut + breakdown ───────────────────── */
+
+.stats-source-layout {
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.stats-donut-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stats-breakdown-col {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+/* ── Breakdown table ──────────────────────────────────────────────────────── */
+
+.stats-breakdown__heading {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin: 0 0 0.875rem;
+}
+
+.stats-breakdown__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.stats-breakdown__row + .stats-breakdown__row {
+  border-top: 1px solid var(--border-glass);
+}
+
+.stats-breakdown__label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.stats-breakdown__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stats-breakdown__count {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 2rem;
+  text-align: right;
+}
+
+.stats-breakdown__pct {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.stats-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+  width: 100%;
+}
+
+.stats-empty__text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.stats-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 10px;
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.stats-link-btn:hover {
+  opacity: 0.87;
+  text-decoration: none;
+  color: #fff;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .stats-page {
+    padding: 1.25rem 1rem 5rem;
+  }
+
+  .stats-tabs {
+    width: 100%;
+  }
+
+  .stats-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .stats-chart-area {
+    padding: 1rem 0.5rem;
+  }
+
+  /* Stack donut and breakdown table vertically on mobile */
+  .stats-source-layout {
+    flex-direction: column;
+    gap: 1.25rem;
+    align-items: stretch;
+  }
+
+  .stats-breakdown-col {
+    width: 100%;
+  }
+
+  /* Insight cards: 2-per-row on narrow screens */
+  .stats-insight-card {
+    min-width: calc(50% - 0.375rem);
+  }
+
+  .stats-section + .stats-section {
+    padding-top: 1.5rem;
+  }
+}

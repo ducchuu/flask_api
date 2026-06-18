@@ -1,0 +1,254 @@
+/* ── App shell ── */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-shell__main {
+  flex: 1;
+  min-width: 0;
+  margin-left: 240px;
+}
+
+/* ── Left sidebar (desktop + tablet) ── */
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 240px;
+  height: 100vh;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0.875rem;
+  /* Glass background — lets particles show through blurred */
+  background: rgba(15, 20, 25, 0.88);
+  border-right: 1px solid var(--border-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: 2px 0 24px rgba(0, 0, 0, 0.18);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+html[data-theme="light"] .sidebar {
+  background: rgba(244, 246, 248, 0.92);
+  box-shadow: 2px 0 24px rgba(15, 20, 25, 0.06);
+}
+
+/* Logo */
+.sidebar__logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  text-decoration: none;
+  padding: 0.375rem 0.625rem;
+  margin-bottom: 1.75rem;
+  display: block;
+  flex-shrink: 0;
+}
+
+.sidebar__logo:hover {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+/* Nav links */
+.sidebar__nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.625rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+
+.sidebar__link:hover {
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+/* Active state: inset left border accent via box-shadow (no layout shift) */
+.sidebar__link--active {
+  background: rgba(255, 107, 74, 0.1);
+  color: var(--accent-primary);
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+
+html[data-theme="light"] .sidebar__link--active {
+  background: rgba(232, 90, 59, 0.08);
+  color: var(--accent-primary);
+}
+
+.sidebar__link--active:hover {
+  background: rgba(255, 107, 74, 0.14);
+}
+
+/* Bottom section: theme toggle + logout */
+.sidebar__bottom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.875rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border-glass);
+  flex-shrink: 0;
+}
+
+.sidebar__logout {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  flex: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar__logout:hover {
+  background: rgba(239, 91, 91, 0.1);
+  color: var(--danger);
+}
+
+/* ── Mobile bottom tab bar ── */
+
+.tab-bar {
+  display: none; /* shown only on mobile via media query */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  z-index: 50;
+  background: rgba(15, 20, 25, 0.94);
+  border-top: 1px solid var(--border-glass);
+  backdrop-filter: blur(20px);
+  align-items: stretch;
+}
+
+html[data-theme="light"] .tab-bar {
+  background: rgba(244, 246, 248, 0.96);
+}
+
+.tab-bar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  flex: 1;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.7rem;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.tab-bar__item:hover {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.tab-bar__item--active {
+  color: var(--accent-primary);
+}
+
+.tab-bar__label {
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+/* ── Responsive breakpoints ── */
+
+@media (max-width: 768px) {
+  /* Hide sidebar, show bottom tab bar */
+  .sidebar {
+    display: none;
+  }
+
+  .tab-bar {
+    display: flex;
+  }
+
+  .app-shell__main {
+    margin-left: 0;
+    padding-bottom: 60px; /* clear the tab bar */
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  /* Tablet: collapse sidebar to icon-only (64px) */
+  .sidebar {
+    width: 64px;
+    padding: 1.5rem 0.5rem;
+    overflow: visible;
+  }
+
+  .sidebar__logo {
+    font-size: 0;
+    padding: 0.375rem;
+    margin-bottom: 1.75rem;
+    /* Show just the dot/icon — keep accessible label */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Show "P" as a compact logo on tablet */
+  .sidebar__logo::after {
+    content: 'P';
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: inherit;
+  }
+
+  .sidebar__link {
+    justify-content: center;
+    padding: 0.625rem;
+    border-radius: 12px;
+  }
+
+  /* Hide labels on tablet; show on tooltip via title attribute if needed */
+  .sidebar__link span,
+  .sidebar__logout span {
+    display: none;
+  }
+
+  .sidebar__logout {
+    justify-content: center;
+    padding: 0.5rem;
+    flex: 0 0 auto;
+  }
+
+  .sidebar__bottom {
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: center;
+  }
+
+  .app-shell__main {
+    margin-left: 64px;
+  }
+}
