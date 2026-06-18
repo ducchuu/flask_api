@@ -136,6 +136,57 @@ def add_item(collection_id: int, item_id: int) -> Any:
     db.commit()
     return "", 204
 
+@bp.post("/<int:collection_id>/items")
+@require_auth
+def save_external_item(collection_id: int) -> Any:
+    """Save a full external item to the DB and add it to a collection."""
+    _owned_collection_or_404(collection_id)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        abort(400, description="Request body must be a JSON object representing the item")
+    
+    external_id = data.get("id") or data.get("external_id")
+    if not external_id:
+        abort(400, description="Item must have an id or external_id")
+    
+    db = get_db()
+    # Check if item exists by external_id
+    item_row = db.execute("SELECT id FROM items WHERE external_id = ?", [external_id]).fetchone()
+    if item_row:
+        internal_id = item_row["id"]
+    else:
+        # Insert the item
+        import json
+        cur = db.execute(
+            """INSERT INTO items (external_id, source_type, source_name, url, title, summary, author, published_at, read_time_min, sentiment_score, sentiment_label, credibility_tier, relevance_score)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            [
+                str(external_id),
+                data.get("source_type", "news"),
+                data.get("source_name"),
+                data.get("url"),
+                data.get("title"),
+                data.get("summary"),
+                data.get("author"),
+                data.get("published_at"),
+                data.get("read_time_min") or 0,
+                data.get("sentiment_score"),
+                data.get("sentiment_label"),
+                data.get("credibility_tier"),
+                data.get("relevance_score")
+            ]
+        )
+        internal_id = cur.lastrowid
+        db.commit()
+
+    # Link to collection
+    db.execute(
+        "INSERT OR IGNORE INTO collection_items (collection_id, item_id) VALUES (?, ?)",
+        [collection_id, internal_id]
+    )
+    db.commit()
+    return "", 201
+
 
 @bp.delete("/<int:collection_id>/items/<int:item_id>")
 @require_auth

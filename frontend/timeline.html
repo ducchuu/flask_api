@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline - Pulse</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js?v=1781810736"></script>
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-bolt"></i> Pulse
+            </div>
+            <div class="nav-links">
+                <a href="/timeline.html" class="nav-link active">Timeline</a>
+                <a href="/search.html" class="nav-link">Search</a>
+                <a href="/collections.html" class="nav-link">Collections</a>
+                <span style="color: var(--border-color);">|</span>
+                <span class="nav-link" id="user-name-display" style="color: var(--accent-primary);"><i class="fas fa-user-circle"></i></span>
+                <a href="#" id="logout-btn" class="nav-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-8">
+        
+        <!-- Dashboard Charts -->
+        <div class="grid sm:grid-cols-2 gap-4 mb-8">
+            <div class="card flex-col items-center justify-center" style="cursor: pointer; transition: transform 0.2s;" onclick="openSourceMixModal()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                <div class="flex justify-between items-center w-full mb-4">
+                    <h3 class="card-title" style="margin: 0; text-align: center; flex-grow: 1;">Source Mix <i class="fas fa-sliders-h" style="color: var(--accent-primary); font-size: 0.9em; margin-left: 0.5rem;"></i></h3>
+                </div>
+                <div style="position: relative; height: 200px; width: 100%;">
+                    <canvas id="sourceMixChart"></canvas>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;"><i class="fas fa-hand-pointer"></i> Click to adjust preferences</p>
+            </div>
+            <div class="card flex-col items-center justify-center">
+                <h3 class="card-title" style="margin-bottom: 1rem; text-align: center;">Activity (Last 7 Days)</h3>
+                <div style="position: relative; height: 200px; width: 100%;">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Interests Section -->
+        <div class="mb-8 p-4" style="background-color: var(--bg-slate); border: 1px solid var(--border-color); border-radius: var(--border-radius);">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="card-title" style="font-size: 1.1rem; margin: 0;"><i class="fas fa-tags" style="color: var(--accent-primary);"></i> Your Active Interests</h3>
+                <form id="add-interest-form" class="flex gap-2">
+                    <input type="text" id="new-interest-input" class="form-control" placeholder="Add an interest..." style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" required>
+                    <button type="submit" class="btn btn-outline btn-sm"><i class="fas fa-plus"></i></button>
+                </form>
+            </div>
+            <div id="active-interests-container" class="flex flex-wrap gap-2">
+                <span class="text-muted" style="font-size: 0.9rem;"><i class="fas fa-spinner fa-spin"></i> Loading...</span>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.75rem;">Note: Interests dictate what appears in your feed below. Use the <a href="/collections.html" style="color: var(--accent-primary);">Collections</a> tab to organize specific stories you've saved.</p>
+        </div>
+
+        <!-- Feed Section -->
+        <div class="flex justify-between items-center mb-4">
+            <h2>Your Feed</h2>
+            <button class="btn btn-outline btn-sm" id="refresh-feed"><i class="fas fa-sync"></i> Refresh</button>
+        </div>
+
+        <div id="feed-container">
+            <!-- Spinner / Content injected here -->
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { api } from './js/api.js';
+        import { renderSpinner, renderEmptyState, showToast } from './js/app.js';
+        import { renderSourceMixChart, renderActivityChart } from './js/charts.js';
+
+        const feedContainer = document.getElementById('feed-container');
+
+        // Helper to format source badge
+        function getBadgeHtml(sourceType) {
+            let className = '';
+            let text = '';
+            let icon = '';
+            switch(sourceType.toLowerCase()) {
+                case 'gnews':
+                case 'news':
+                    className = 'badge-news'; text = 'News'; icon = 'fa-newspaper'; break;
+                case 'youtube':
+                case 'video':
+                    className = 'badge-video'; text = 'Video'; icon = 'fa-play-circle'; break;
+                case 'lemmy':
+                case 'discuss':
+                    className = 'badge-discuss'; text = 'Discuss'; icon = 'fa-comments'; break;
+                default:
+                    className = 'badge-news'; text = sourceType; icon = 'fa-tag';
+            }
+            return `<span class="badge ${className}"><i class="fas ${icon}"></i> ${text}</span>`;
+        }
+
+        async function loadInterests() {
+            const container = document.getElementById('active-interests-container');
+            try {
+                const interests = await api.get('/api/interests');
+                if (!interests || interests.length === 0) {
+                    container.innerHTML = `<span class="text-muted" style="font-size: 0.9rem;">No interests configured. Your feed will show general topics.</span>`;
+                } else {
+                    container.innerHTML = interests.map(int => 
+                        `<span class="badge" style="background-color: rgba(16, 185, 129, 0.15); color: var(--accent-primary); border: 1px solid rgba(16, 185, 129, 0.3); text-transform: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                            ${int.name}
+                            <i class="fas fa-times delete-interest-btn" data-id="${int.id}" style="cursor: pointer; color: var(--accent-video);"></i>
+                        </span>`
+                    ).join('');
+
+                    document.querySelectorAll('.delete-interest-btn').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const id = e.currentTarget.getAttribute('data-id');
+                            try {
+                                await api.del(`/api/interests/${id}`);
+                                loadInterests();
+                                loadFeed(); // refresh feed because topics changed
+                            } catch (err) {
+                                showToast('Failed to delete interest', 'error');
+                            }
+                        });
+                    });
+                }
+            } catch (error) {
+                container.innerHTML = `<span class="text-muted" style="color: var(--accent-video); font-size: 0.9rem;">Failed to load interests</span>`;
+            }
+        }
+
+        document.getElementById('add-interest-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('new-interest-input');
+            const val = input.value.trim();
+            if (!val) return;
+            try {
+                await api.post('/api/interests', {
+                    name: val,
+                    keywords: [val.toLowerCase()],
+                    weight: 1.0
+                });
+                input.value = '';
+                loadInterests();
+                loadFeed();
+            } catch (err) {
+                showToast('Failed to add interest', 'error');
+            }
+        });
+
+        async function loadFeed() {
+            renderSpinner('feed-container');
+            try {
+                const clusters = await api.get('/api/items');
+                window.currentClusters = clusters; // Store globally for saving
+                feedContainer.innerHTML = '';
+
+                if (!clusters || clusters.length === 0) {
+                    renderEmptyState('feed-container', 'Your feed is empty. Try adding more interests or check back later.', 'fa-rss');
+                    return;
+                }
+
+                let sourceStats = { news: 0, video: 0, discuss: 0 };
+                
+                // --- Enforce Source Mix Proportions Visually ---
+                const user = await api.get('/api/users/me').catch(() => ({}));
+                const prefsObj = (user.user || user).source_prefs_json ? JSON.parse((user.user || user).source_prefs_json) : { news: 0.8, video: 0.5, discussion: 0.7 };
+                const pNews = prefsObj.news || 0;
+                const pVideo = prefsObj.video || 0;
+                const pDiscuss = prefsObj.discussion || 0;
+                const totalP = pNews + pVideo + pDiscuss || 1;
+                
+                // Allow up to 30 clusters max, distributed by preference
+                const maxTotal = 30;
+                const maxNews = Math.round((pNews / totalP) * maxTotal);
+                const maxVideo = Math.round((pVideo / totalP) * maxTotal);
+                const maxDiscuss = Math.round((pDiscuss / totalP) * maxTotal);
+                
+                const filteredClusters = [];
+                let cNews = 0, cVideo = 0, cDiscuss = 0;
+
+                clusters.forEach(cluster => {
+                    const items = cluster.items || [];
+                    if (items.length === 0) return;
+                    
+                    items.sort((a,b) => (b.relevance_score || 0) - (a.relevance_score || 0));
+                    const topItem = items[0];
+                    const st = (topItem.source_type || 'news').toLowerCase();
+                    
+                    let keep = false;
+                    if ((st.includes('news') || st.includes('gnews')) && cNews < maxNews) {
+                        cNews++; keep = true;
+                    } else if ((st.includes('video') || st.includes('youtube')) && cVideo < maxVideo) {
+                        cVideo++; keep = true;
+                    } else if ((st.includes('discuss') || st.includes('lemmy')) && cDiscuss < maxDiscuss) {
+                        cDiscuss++; keep = true;
+                    }
+                    
+                    if (keep) filteredClusters.push(cluster);
+                });
+                
+                filteredClusters.forEach(cluster => {
+                    const items = cluster.items || [];
+
+                    // Sort items in this cluster by relevance
+                    items.sort((a,b) => (b.relevance_score || 0) - (a.relevance_score || 0));
+                    
+                    const topItem = items[0];
+                    const relatedItems = items.slice(1);
+
+                    // Update stats using top item
+                    const st = (topItem.source_type || 'news').toLowerCase();
+                    if (st.includes('news') || st.includes('gnews')) sourceStats.news++;
+                    if (st.includes('video') || st.includes('youtube')) sourceStats.video++;
+                    if (st.includes('discuss') || st.includes('lemmy')) sourceStats.discuss++;
+
+                    // Determine glow color
+                    const cardSource = st.includes('youtube') ? 'youtube' : st.includes('lemmy') ? 'lemmy' : 'gnews';
+                    const relScore = Math.round((topItem.relevance_score || 0) * 100);
+
+                    // Build badges
+                    let badgesHtml = '';
+                    if (topItem.sentiment) {
+                        const icon = topItem.sentiment === 'positive' ? 'fa-arrow-up text-green-400' : topItem.sentiment === 'negative' ? 'fa-arrow-down text-red-400' : 'fa-minus text-gray-400';
+                        badgesHtml += `<span class="badge" style="border: 1px solid rgba(255,255,255,0.1);"><i class="fas ${icon}"></i> ${topItem.sentiment}</span>`;
+                    }
+                    if (topItem.credibility) {
+                        badgesHtml += `<span class="badge" style="border: 1px solid rgba(255,255,255,0.1);"><i class="fas fa-shield-alt" style="color: var(--accent-secondary);"></i> ${topItem.credibility}</span>`;
+                    }
+                    if (topItem.read_time) {
+                        badgesHtml += `<span class="badge" style="border: 1px solid rgba(255,255,255,0.1);"><i class="far fa-clock text-muted"></i> ${topItem.read_time}</span>`;
+                    }
+
+                    // Build related items html
+                    let relatedHtml = '';
+                    if (relatedItems.length > 0) {
+                        relatedHtml = `
+                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Related Sources in this Cluster:</p>
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem;">
+                                    ${relatedItems.map(ri => `
+                                        <li style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            ${getBadgeHtml(ri.source_type || '')}
+                                            <a target="_blank" href="${ri.url || '#'}" style="color: var(--text-main); flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ri.title}</a>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'card mb-4';
+                    card.setAttribute('data-source', cardSource);
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div style="flex-grow: 1; padding-right: 1rem;">
+                                <a target="_blank" href="${topItem.url || '#'}">
+                                    <h3 class="card-title">${topItem.title || 'Untitled'}</h3>
+                                </a>
+                                <div class="card-meta" style="flex-wrap: wrap;">
+                                    ${getBadgeHtml(topItem.source_type || '')}
+                                    ${badgesHtml}
+                                </div>
+                            </div>
+                            <div class="relevance-score" style="--score: ${relScore}%" title="Relevance Score: ${relScore}%">
+                                <span>${relScore}</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            ${topItem.summary || 'No summary available.'}
+                            ${relatedHtml}
+                        </div>
+                        <div class="card-footer">
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                ${(cluster.keywords || []).map(kw => `<span class="badge" style="background: rgba(255,255,255,0.05); font-weight: 500; font-size: 0.7rem; text-transform: none;">#${kw}</span>`).join('')}
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <button class="btn btn-outline btn-sm feedback-btn" data-id="${topItem.id}" data-kind="more" title="Show more like this" style="padding: 0.2rem 0.5rem;"><i class="fas fa-thumbs-up"></i></button>
+                                <button class="btn btn-outline btn-sm feedback-btn" data-id="${topItem.id}" data-kind="less" title="Show less like this" style="padding: 0.2rem 0.5rem;"><i class="fas fa-thumbs-down"></i></button>
+                                <button class="btn btn-primary btn-sm open-save-modal-btn" data-id="${topItem.id}"><i class="far fa-bookmark"></i> Save</button>
+                            </div>
+                        </div>
+                    `;
+                    feedContainer.appendChild(card);
+                });
+
+                // Attach Feedback listeners
+                document.querySelectorAll('.feedback-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.currentTarget.getAttribute('data-id');
+                        const kind = e.currentTarget.getAttribute('data-kind');
+                        
+                        // Find item payload
+                        let itemObj = null;
+                        for (let c of window.currentClusters) {
+                            if (c.items) {
+                                let found = c.items.find(i => String(i.id) === String(id));
+                                if (found) { itemObj = found; break; }
+                            }
+                        }
+
+                        if (!itemObj) return;
+
+                        // Give immediate visual feedback
+                        e.currentTarget.style.backgroundColor = kind === 'more' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                        e.currentTarget.style.borderColor = kind === 'more' ? 'var(--accent-primary)' : 'var(--accent-video)';
+                        
+                        try {
+                            await api.post('/api/feedback', {
+                                item: itemObj,
+                                kind: kind
+                            });
+                            showToast(`Feedback recorded: ${kind}`, 'success');
+                        } catch (err) {
+                            showToast('Failed to record feedback', 'error');
+                        }
+                    });
+                });
+
+                // Attach Save listeners
+                document.querySelectorAll('.open-save-modal-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = e.currentTarget.getAttribute('data-id');
+                        window.currentItemToSaveId = id; // Store the ID to find it in the clusters
+                        document.getElementById('save-modal').classList.remove('hidden');
+                        loadCollectionsForModal();
+                    });
+                });
+
+                // Fetch Real Charts Data for Activity ONLY
+                try {
+                    const activityStats = await api.get('/api/items/stats?by=day');
+
+                    let actLabels = [];
+                    let actCounts = [];
+                    if (activityStats && activityStats.stats) {
+                        // Keep last 7 items since they are oldest first
+                        const last7 = activityStats.stats.slice(-7);
+                        last7.forEach(st => {
+                            actLabels.push(st.day.substring(5)); // just MM-DD
+                            actCounts.push(st.count);
+                        });
+                    }
+
+                    if (actLabels.length === 0) {
+                        actLabels = ['No Data'];
+                        actCounts = [0];
+                    }
+
+                    // Source Mix uses local feed stats to accurately reflect current feed
+                    renderSourceMixChart('sourceMixChart', sourceStats);
+                    renderActivityChart('activityChart', { labels: actLabels, counts: actCounts });
+                } catch (err) {
+                    console.warn('Could not load real stats, using empty charts', err);
+                    renderSourceMixChart('sourceMixChart', sourceStats);
+                    renderActivityChart('activityChart', { labels: ['No Data'], counts: [0] });
+                }
+
+                // Background Feed Persistence
+                setTimeout(() => {
+                    api.post('/api/stories').catch(e => console.warn('Background persistence skipped', e));
+                }, 2000);
+
+            } catch (error) {
+                showToast(error.message, 'error');
+                feedContainer.innerHTML = `
+                    <div class="empty-state" style="border-color: var(--accent-video);">
+                        <i class="fas fa-exclamation-triangle" style="color: var(--accent-video);"></i>
+                        <h3>Failed to load feed</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Save Modal Logic
+        async function loadCollectionsForModal() {
+            const list = document.getElementById('modal-collections-list');
+            list.innerHTML = '<span class="text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</span>';
+            try {
+                const cols = await api.get('/api/collections');
+                if (!cols || cols.length === 0) {
+                    list.innerHTML = '<p class="text-muted" style="font-size: 0.9rem;">You have no collections.</p>';
+                } else {
+                    list.innerHTML = cols.map(c => `
+                        <button class="btn btn-outline" style="width: 100%; justify-content: flex-start; margin-bottom: 0.5rem;" onclick="saveToCollection(${c.id})">
+                            <i class="fas fa-folder" style="color: var(--accent-secondary);"></i> ${c.name}
+                        </button>
+                    `).join('');
+                }
+            } catch (err) {
+                list.innerHTML = '<p class="text-muted" style="color: var(--accent-video);">Error loading collections.</p>';
+            }
+        }
+
+        window.saveToCollection = async (collectionId) => {
+            const itemId = window.currentItemToSaveId;
+            if (!itemId || !window.currentClusters) return;
+            
+            // Find the full item object
+            let itemObj = null;
+            for (let c of window.currentClusters) {
+                if (c.items) {
+                    let found = c.items.find(i => String(i.id) === String(itemId));
+                    if (found) { itemObj = found; break; }
+                }
+            }
+            if (!itemObj) return;
+
+            try {
+                // Send the full item to the new POST endpoint
+                await api.post(`/api/collections/${collectionId}/items`, itemObj);
+                showToast('Item saved to collection!', 'success');
+                document.getElementById('save-modal').classList.add('hidden');
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        };
+
+        document.getElementById('close-save-modal').addEventListener('click', () => {
+            document.getElementById('save-modal').classList.add('hidden');
+        });
+
+        document.getElementById('refresh-feed').addEventListener('click', loadFeed);
+
+        // --- Source Mix Settings Logic ---
+        window.openSourceMixModal = async () => {
+            document.getElementById('source-mix-settings-modal').classList.remove('hidden');
+            try {
+                const res = await api.get('/api/users/me');
+                const user = res.user || res;
+                let prefs = { news: 0.8, video: 0.5, discussion: 0.7 };
+                if (user.source_prefs_json) {
+                    prefs = JSON.parse(user.source_prefs_json);
+                }
+                document.getElementById('slider-news').value = Math.round((prefs.news || 0) * 100);
+                document.getElementById('slider-video').value = Math.round((prefs.video || 0) * 100);
+                document.getElementById('slider-discuss').value = Math.round((prefs.discussion || 0) * 100);
+                
+                document.getElementById('val-news').textContent = Math.round((prefs.news || 0) * 100) + '%';
+                document.getElementById('val-video').textContent = Math.round((prefs.video || 0) * 100) + '%';
+                document.getElementById('val-discuss').textContent = Math.round((prefs.discussion || 0) * 100) + '%';
+            } catch (err) {
+                showToast('Failed to load preferences', 'error');
+            }
+        };
+
+        ['news', 'video', 'discuss'].forEach(type => {
+            const slider = document.getElementById(`slider-${type}`);
+            const valSpan = document.getElementById(`val-${type}`);
+            if(slider && valSpan) {
+                slider.addEventListener('input', (e) => {
+                    valSpan.textContent = e.target.value + '%';
+                });
+            }
+        });
+
+        document.getElementById('close-source-mix-modal').addEventListener('click', () => {
+            document.getElementById('source-mix-settings-modal').classList.add('hidden');
+        });
+
+        document.getElementById('save-source-mix-btn').addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            btn.disabled = true;
+
+            const newPrefs = {
+                news: parseInt(document.getElementById('slider-news').value) / 100.0,
+                video: parseInt(document.getElementById('slider-video').value) / 100.0,
+                discussion: parseInt(document.getElementById('slider-discuss').value) / 100.0
+            };
+
+            try {
+                await api.patch('/api/users/me', {
+                    source_prefs_json: JSON.stringify(newPrefs)
+                });
+                showToast('Source preferences updated!', 'success');
+                document.getElementById('source-mix-settings-modal').classList.add('hidden');
+                loadFeed(); // Reload timeline with new mix
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.innerHTML = 'Save Preferences';
+                btn.disabled = false;
+            }
+        });
+
+        // Initial Load
+        loadInterests();
+        loadFeed();
+    </script>
+
+    <!-- Save Modal -->
+    <div id="save-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div class="card" style="width: 100%; max-width: 400px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="card-title">Save to Collection</h3>
+                <i id="close-save-modal" class="fas fa-times" style="cursor: pointer; color: var(--text-muted);"></i>
+            </div>
+            <div id="modal-collections-list" class="flex-col gap-2" style="max-height: 300px; overflow-y: auto;">
+                <!-- Collections will be loaded here -->
+            </div>
+            <div class="mt-4 pt-4" style="border-top: 1px solid var(--border-color); text-align: center;">
+                <a href="/collections.html" style="font-size: 0.8rem; color: var(--accent-primary);">Manage Collections</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Source Mix Settings Modal -->
+    <div id="source-mix-settings-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div class="card" style="width: 100%; max-width: 450px;">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="card-title"><i class="fas fa-sliders-h" style="color: var(--accent-primary);"></i> Adjust Source Mix</h3>
+                <i id="close-source-mix-modal" class="fas fa-times" style="cursor: pointer; color: var(--text-muted);"></i>
+            </div>
+            <div class="flex-col gap-6">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label style="color: #3B82F6; font-weight: bold;"><i class="fas fa-newspaper"></i> News (GNews)</label>
+                        <span id="val-news" style="font-family: monospace;">50%</span>
+                    </div>
+                    <input type="range" id="slider-news" min="0" max="100" value="50" style="width: 100%; accent-color: #3B82F6;">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label style="color: #EF4444; font-weight: bold;"><i class="fas fa-play-circle"></i> Video (YouTube)</label>
+                        <span id="val-video" style="font-family: monospace;">50%</span>
+                    </div>
+                    <input type="range" id="slider-video" min="0" max="100" value="50" style="width: 100%; accent-color: #EF4444;">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label style="color: #8B5CF6; font-weight: bold;"><i class="fas fa-comments"></i> Discuss (Lemmy)</label>
+                        <span id="val-discuss" style="font-family: monospace;">50%</span>
+                    </div>
+                    <input type="range" id="slider-discuss" min="0" max="100" value="50" style="width: 100%; accent-color: #8B5CF6;">
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end">
+                <button class="btn btn-primary" id="save-source-mix-btn" style="width: 100%;">Save Preferences</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search - Pulse</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-bolt"></i> Pulse
+            </div>
+            <div class="nav-links">
+                <a href="/timeline.html" class="nav-link">Timeline</a>
+                <a href="/search.html" class="nav-link active">Search</a>
+                <a href="/collections.html" class="nav-link">Collections</a>
+                <span style="color: var(--border-color);">|</span>
+                <span class="nav-link" id="user-name-display" style="color: var(--accent-primary);"><i class="fas fa-user-circle"></i></span>
+                <a href="#" id="logout-btn" class="nav-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-8">
+        
+        <!-- Search Filter Form -->
+        <div class="card mb-8">
+            <h2 class="mb-4">Search & Filter</h2>
+            <form id="search-form">
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <input type="text" id="search-query" class="form-control" placeholder="Search across all sources..." style="font-size: 1.5rem; padding: 1rem 1.5rem; border-radius: var(--border-radius-lg); box-shadow: 0 0 20px rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.15);">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="filter-source">Source Type</label>
+                        <select id="filter-source" class="form-control">
+                            <option value="">All Sources</option>
+                            <option value="gnews">Google News</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="lemmy">Lemmy Discussions</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filter-freshness">Freshness</label>
+                        <select id="filter-freshness" class="form-control">
+                            <option value="24h">Last 24 Hours</option>
+                            <option value="7d">Last Week</option>
+                            <option value="30d">Last Month</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filter-sort">Sort Order</label>
+                        <select id="filter-sort" class="form-control">
+                            <option value="relevance">Relevance</option>
+                            <option value="recency">Recency</option>
+                            <option value="popularity">Popularity</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mt-4 pt-4" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" id="clear-btn" class="btn btn-outline"><i class="fas fa-times"></i> Clear</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Search Results -->
+        <h3 class="mb-4" id="results-header">Results</h3>
+        <div id="results-container">
+            <div class="empty-state">
+                <i class="fas fa-search"></i>
+                <h3>Enter a query to begin</h3>
+                <p>Use the filters above to narrow down your results.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { api } from './js/api.js';
+        import { renderSpinner, renderEmptyState, showToast } from './js/app.js';
+
+        const form = document.getElementById('search-form');
+        const resultsContainer = document.getElementById('results-container');
+        const header = document.getElementById('results-header');
+
+        function getBadgeHtml(sourceType) {
+            let className = '';
+            let text = '';
+            let icon = '';
+            switch(sourceType.toLowerCase()) {
+                case 'gnews':
+                case 'news':
+                    className = 'badge-news'; text = 'News'; icon = 'fa-newspaper'; break;
+                case 'youtube':
+                case 'video':
+                    className = 'badge-video'; text = 'Video'; icon = 'fa-play-circle'; break;
+                case 'lemmy':
+                case 'discuss':
+                    className = 'badge-discuss'; text = 'Discuss'; icon = 'fa-comments'; break;
+                default:
+                    className = 'badge-news'; text = sourceType; icon = 'fa-tag';
+            }
+            return `<span class="badge ${className}"><i class="fas ${icon}"></i> ${text}</span>`;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const q = document.getElementById('search-query').value;
+            const source = document.getElementById('filter-source').value;
+            const freshness = document.getElementById('filter-freshness').value;
+            const sort = document.getElementById('filter-sort').value;
+
+            // Build Query Params
+            const params = new URLSearchParams();
+            if (q) params.append('q', q);
+            if (source) params.append('source', source);
+            if (freshness) params.append('freshness', freshness);
+            if (sort) params.append('sort', sort);
+
+            renderSpinner('results-container');
+            header.textContent = `Searching...`;
+
+            try {
+                const results = await api.get(`/api/search?${params.toString()}`);
+                resultsContainer.innerHTML = '';
+                
+                if (!results || results.length === 0) {
+                    renderEmptyState('results-container', 'No results found matching your criteria.', 'fa-search-minus');
+                    header.textContent = `0 Results`;
+                    return;
+                }
+
+                header.textContent = `${results.length} Results`;
+
+                results.forEach(story => {
+                    const card = document.createElement('div');
+                    card.className = 'card mb-4';
+                    card.setAttribute('data-source', (story.sourceType || 'news').toLowerCase().includes('youtube') ? 'youtube' : 
+                                                    (story.sourceType || 'news').toLowerCase().includes('lemmy') ? 'lemmy' : 'gnews');
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div>
+                                <a href="/story.html?id=${story.id}">
+                                    <h3 class="card-title">${story.title}</h3>
+                                </a>
+                                <div class="card-meta">
+                                    ${getBadgeHtml(story.sourceType)}
+                                </div>
+                            </div>
+                            <div class="relevance-score" style="--score: ${story.relevance || 0}%" title="Relevance Score: ${story.relevance}%">
+                                <span>${story.relevance || 0}</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            ${story.summary || 'No summary available.'}
+                        </div>
+                        <div class="card-footer">
+                            <a href="/story.html?id=${story.id}" class="btn btn-outline btn-sm">Read More</a>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(card);
+                });
+
+            } catch (err) {
+                showToast(err.message, 'error');
+                renderEmptyState('results-container', 'An error occurred while searching.', 'fa-exclamation-triangle');
+                header.textContent = `Results`;
+            }
+        });
+
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            form.reset();
+            resultsContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>Enter a query to begin</h3>
+                    <p>Use the filters above to narrow down your results.</p>
+                </div>
+            `;
+            header.textContent = `Results`;
+        });
+    </script>
+</body>
+</html>

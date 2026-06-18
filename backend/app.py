@@ -3,6 +3,7 @@ import os
 from typing import Any, Mapping
 
 from flask import Flask, jsonify
+from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
 from backend.db import close_db, init_db
@@ -20,6 +21,7 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
         DATABASE=os.environ.get("DATABASE", "pulse.db"),
         SECRET_KEY=os.environ.get("SECRET_KEY", "somesortasecret"),
     )
+    CORS(app)
     if config:
         app.config.update(config)
 

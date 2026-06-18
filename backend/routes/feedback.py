@@ -35,21 +35,55 @@ def create_feedback() -> Any:
     if not isinstance(data, dict):
         abort(400, description="Request body must be a JSON object")
 
-    item_id = data.get("item_id")
-    if not isinstance(item_id, int):
-        abort(400, description="Field 'item_id' is required")
-
     kind = data.get("kind")
     if kind not in VALID_KINDS:
         abort(400, description="Field 'kind' must be one of more, less, hide")
 
     db = get_db()
+    item_id = data.get("item_id")
+    
+    # If the frontend sent a full item payload to save first
+    item_obj = data.get("item")
+    if item_obj and isinstance(item_obj, dict):
+        external_id = item_obj.get("id") or item_obj.get("external_id")
+        if external_id:
+            # Check if it already exists
+            row = db.execute("SELECT id FROM items WHERE external_id = ?", [str(external_id)]).fetchone()
+            if row:
+                item_id = row["id"]
+            else:
+                # Upsert
+                cur = db.execute(
+                    """INSERT INTO items (external_id, source_type, source_name, url, title, summary, author, published_at, read_time_min, sentiment_score, sentiment_label, credibility_tier, relevance_score)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    [
+                        str(external_id),
+                        item_obj.get("source_type", "news"),
+                        item_obj.get("source_name"),
+                        item_obj.get("url"),
+                        item_obj.get("title"),
+                        item_obj.get("summary"),
+                        item_obj.get("author"),
+                        item_obj.get("published_at"),
+                        item_obj.get("read_time_min") or 0,
+                        item_obj.get("sentiment_score"),
+                        item_obj.get("sentiment_label"),
+                        item_obj.get("credibility_tier"),
+                        item_obj.get("relevance_score")
+                    ]
+                )
+                item_id = cur.lastrowid
+                db.commit()
+    
+    if not isinstance(item_id, int):
+        abort(400, description="Valid item_id or full item payload is required")
+
     # select 1 cus you just need to know if it exists
     if db.execute("SELECT 1 FROM items WHERE id = ?", [item_id]).fetchone() is None:
         abort(404, description="Item not found")
 
     cur = db.execute(
-        "INSERT OR REPLACE INTO feedback (user_id, item_id, kind) VALUES (?, ?, ?)", # update for solving possible dupliocates and integration errors
+        "INSERT OR REPLACE INTO feedback (user_id, item_id, kind) VALUES (?, ?, ?)",
         [g.user_id, item_id, kind],
     )
     db.commit()

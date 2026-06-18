@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Details - Pulse</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        .story-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .story-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        .story-content {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: #E2E8F0;
+            margin-bottom: 3rem;
+        }
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            height: 0;
+            overflow: hidden;
+            border-radius: var(--border-radius);
+            margin-bottom: 3rem;
+            box-shadow: var(--shadow-lg);
+            background-color: #000;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        .comments-section {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
+            padding: 2.5rem;
+            border-radius: var(--border-radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-bolt"></i> Pulse
+            </div>
+            <div class="nav-links">
+                <a href="/timeline.html" class="nav-link">Timeline</a>
+                <a href="/search.html" class="nav-link">Search</a>
+                <a href="/collections.html" class="nav-link">Collections</a>
+                <span style="color: var(--border-color);">|</span>
+                <span class="nav-link" id="user-name-display" style="color: var(--accent-primary);"><i class="fas fa-user-circle"></i></span>
+                <a href="#" id="logout-btn" class="nav-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-8 mb-8" id="story-container">
+        <!-- Spinner initially -->
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p>Loading story...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { api } from './js/api.js';
+        import { renderEmptyState, showToast } from './js/app.js';
+
+        const container = document.getElementById('story-container');
+        
+        async function loadStory() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const storyId = urlParams.get('id');
+
+            if (!storyId) {
+                renderEmptyState('story-container', 'No story ID provided in the URL.', 'fa-exclamation-triangle');
+                return;
+            }
+
+            try {
+                const story = await api.get(`/api/stories/${storyId}`);
+                
+                let html = `
+                    <div class="story-header">
+                        <a href="/timeline.html" class="btn btn-outline btn-sm mb-4"><i class="fas fa-arrow-left"></i> Back</a>
+                        <h1 class="story-title">${story.title || 'Untitled Story'}</h1>
+                        <div class="flex items-center gap-4 text-muted">
+                            <span class="badge badge-news" style="text-transform: capitalize;">${story.sourceType || 'Unknown Source'}</span>
+                            <a href="${story.url || '#'}" target="_blank" style="color: var(--accent-primary);"><i class="fas fa-external-link-alt"></i> Original Article</a>
+                        </div>
+                    </div>
+
+                    <!-- Article Content -->
+                    <div class="story-content">
+                        ${story.content || story.summary || '<p>No content available.</p>'}
+                    </div>
+                `;
+
+                // Video Section
+                if (story.videoEmbedUrl) {
+                    html += `
+                        <h3 class="mb-4"><i class="fab fa-youtube" style="color: var(--accent-video);"></i> Related Video</h3>
+                        <div class="video-container">
+                            <iframe src="${story.videoEmbedUrl}" allowfullscreen></iframe>
+                        </div>
+                    `;
+                }
+
+                // Discussion Section
+                if (story.comments && story.comments.length > 0) {
+                    let commentsHtml = story.comments.map(c => `
+                        <div class="comment">
+                            <div class="comment-author"><i class="fas fa-user-circle"></i> ${c.author || 'Anonymous'}</div>
+                            <div class="comment-body">${c.body}</div>
+                        </div>
+                    `).join('');
+
+                    html += `
+                        <div class="comments-section">
+                            <h3 class="mb-4"><i class="fas fa-comments" style="color: var(--accent-discuss);"></i> Discussion (Lemmy)</h3>
+                            ${commentsHtml}
+                        </div>
+                    `;
+                }
+
+                container.innerHTML = html;
+
+            } catch (err) {
+                showToast(err.message, 'error');
+                renderEmptyState('story-container', `Failed to load story: ${err.message}`, 'fa-times-circle');
+            }
+        }
+
+        loadStory();
+    </script>
+</body>
+</html>

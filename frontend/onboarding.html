@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding - Pulse</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        body { justify-content: center; align-items: center; padding: 2rem 1rem; }
+        .onboarding-card { width: 100%; max-width: 600px; padding: 2.5rem; }
+        .interest-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        .interest-checkbox { display: none; }
+        .interest-label {
+            display: block;
+            padding: 1rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+            backdrop-filter: blur(4px);
+        }
+        .interest-label:hover { border-color: var(--accent-secondary); box-shadow: 0 0 10px rgba(14, 165, 233, 0.2); }
+        .interest-checkbox:checked + .interest-label {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+            transform: scale(1.05);
+        }
+        .step-title {
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+        .slider-group {
+            margin-bottom: 1.5rem;
+        }
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            cursor: pointer;
+            margin-top: -8px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+        .custom-tags-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .custom-tag-badge {
+            background-color: var(--accent-primary);
+            color: var(--bg-dark-slate);
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .custom-tag-badge i { cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="auth-wrapper flex-col">
+    <div class="container flex-col items-center">
+        <div class="card auth-card" style="max-width: 650px;">
+            <div class="auth-header" style="margin-bottom: 1.5rem;">
+                <h2 class="logo" style="justify-content: center; font-size: 2.5rem;"><i class="fas fa-sparkles"></i> Welcome!</h2>
+                <p>Let's personalize your feed to match your exact interests.</p>
+            </div>
+
+            <form id="onboarding-form">
+                
+                <!-- Step 1: Interests -->
+                <h3 class="step-title">Step 1: Select Your Topics</h3>
+                
+                <div class="form-group mb-4">
+                    <div class="custom-tags-container" id="custom-tags-list"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="custom-topic-input" class="form-control" placeholder="Type a custom topic and press Enter..." style="flex-grow: 1;">
+                        <button type="button" id="add-topic-btn" class="btn btn-outline btn-sm"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                </div>
+
+                <div class="interest-grid">
+                    <div>
+                        <input type="checkbox" id="int-ai" class="interest-checkbox" value="Artificial Intelligence">
+                        <label for="int-ai" class="interest-label">AI & ML</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="int-web" class="interest-checkbox" value="Web Development">
+                        <label for="int-web" class="interest-label">Web Dev</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="int-f1" class="interest-checkbox" value="Formula 1">
+                        <label for="int-f1" class="interest-label">Formula 1</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="int-games" class="interest-checkbox" value="Gaming">
+                        <label for="int-games" class="interest-label">Gaming</label>
+                    </div>
+                </div>
+
+                <!-- Step 2: Source Tuning -->
+                <h3 class="step-title">Step 2: Source Tuning</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Adjust how much of each source type you want to see in your timeline.</p>
+
+                <div class="slider-group">
+                    <label>
+                        <span><i class="fas fa-newspaper" style="color: var(--accent-news);"></i> News (GNews)</span>
+                        <span id="val-news">50%</span>
+                    </label>
+                    <input type="range" id="pref-news" min="0" max="100" value="50">
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span><i class="fab fa-youtube" style="color: var(--accent-video);"></i> Video (YouTube)</span>
+                        <span id="val-video">30%</span>
+                    </label>
+                    <input type="range" id="pref-video" min="0" max="100" value="30">
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span><i class="fas fa-comments" style="color: var(--accent-discuss);"></i> Discussion (Lemmy)</span>
+                        <span id="val-discuss">20%</span>
+                    </label>
+                    <input type="range" id="pref-discuss" min="0" max="100" value="20">
+                </div>
+
+                <div class="flex justify-between items-center mt-8">
+                    <a href="/timeline.html" class="btn btn-outline">Skip for now</a>
+                    <button type="submit" class="btn btn-primary">Complete Setup <i class="fas fa-check"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+    </div>
+
+    <script type="module">
+        import { api } from './js/api.js';
+        import { showToast } from './js/app.js';
+
+        // Ensure user is actually logged in
+        if (!localStorage.getItem('pulse_token')) {
+            window.location.href = '/index.html';
+        }
+
+        // Custom tags logic
+        const customTags = [];
+        const tagsList = document.getElementById('custom-tags-list');
+        const customInput = document.getElementById('custom-topic-input');
+        const addTopicBtn = document.getElementById('add-topic-btn');
+
+        function renderTags() {
+            tagsList.innerHTML = customTags.map((t, idx) => `
+                <div class="custom-tag-badge">
+                    ${t} <i class="fas fa-times" onclick="removeTag(${idx})"></i>
+                </div>
+            `).join('');
+        }
+
+        window.removeTag = (idx) => {
+            customTags.splice(idx, 1);
+            renderTags();
+        };
+
+        function addTag() {
+            const val = customInput.value.trim();
+            if (val && !customTags.includes(val)) {
+                customTags.push(val);
+                customInput.value = '';
+                renderTags();
+            }
+        }
+
+        customInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag();
+            }
+        });
+        addTopicBtn.addEventListener('click', addTag);
+
+        // Slider sync logic
+        ['news', 'video', 'discuss'].forEach(type => {
+            const slider = document.getElementById(`pref-${type}`);
+            const valLabel = document.getElementById(`val-${type}`);
+            slider.addEventListener('input', (e) => {
+                valLabel.textContent = e.target.value + '%';
+            });
+        });
+
+        // Form submission
+        document.getElementById('onboarding-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const checkboxes = document.querySelectorAll('.interest-checkbox:checked');
+            const predefinedInterests = Array.from(checkboxes).map(cb => cb.value);
+            const allInterests = [...new Set([...predefinedInterests, ...customTags])];
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            btn.disabled = true;
+
+            try {
+                // 1. Send each selected interest to the backend sequentially
+                for (const interestName of allInterests) {
+                    await api.post('/api/interests', {
+                        name: interestName,
+                        keywords: [interestName.toLowerCase()],
+                        weight: 1.0
+                    });
+                }
+
+                // 2. PATCH User Profile with preferences
+                const prefs = {
+                    news: parseInt(document.getElementById('pref-news').value),
+                    video: parseInt(document.getElementById('pref-video').value),
+                    discuss: parseInt(document.getElementById('pref-discuss').value)
+                };
+
+                await api.patch('/api/users/me', {
+                    source_prefs_json: JSON.stringify(prefs)
+                });
+
+                showToast('Onboarding complete!', 'success');
+                setTimeout(() => {
+                    window.location.href = '/timeline.html';
+                }, 1000);
+            } catch (err) {
+                showToast(`Error: ${err.message}`, 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

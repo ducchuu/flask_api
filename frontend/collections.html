@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collections - Pulse</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-bolt"></i> Pulse
+            </div>
+            <div class="nav-links">
+                <a href="/timeline.html" class="nav-link">Timeline</a>
+                <a href="/search.html" class="nav-link">Search</a>
+                <a href="/collections.html" class="nav-link active">Collections</a>
+                <span style="color: var(--border-color);">|</span>
+                <span class="nav-link" id="user-name-display" style="color: var(--accent-primary);"><i class="fas fa-user-circle"></i></span>
+                <a href="#" id="logout-btn" class="nav-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-8">
+        
+        <div class="flex justify-between items-center mb-6">
+            <h2>Your Collections</h2>
+            <form id="create-collection-form" class="flex gap-2">
+                <input type="text" id="new-collection-name" class="form-control" placeholder="New collection name..." required style="min-width: 200px;">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Create</button>
+            </form>
+        </div>
+
+        <div id="collections-container" class="grid sm:grid-cols-2 gap-4">
+            <!-- Spinner initially -->
+            <div class="spinner-container" style="grid-column: 1 / -1;">
+                <div class="spinner"></div>
+                <p>Loading collections...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { api } from './js/api.js';
+        import { renderSpinner, renderEmptyState, showToast } from './js/app.js';
+
+        const container = document.getElementById('collections-container');
+        const form = document.getElementById('create-collection-form');
+
+        async function loadCollections() {
+            container.innerHTML = `
+                <div class="spinner-container" style="grid-column: 1 / -1;">
+                    <div class="spinner"></div>
+                    <p>Loading collections...</p>
+                </div>
+            `;
+            try {
+                const collections = await api.get('/api/collections');
+                container.innerHTML = '';
+
+                if (!collections || collections.length === 0) {
+                    container.innerHTML = `<div style="grid-column: 1 / -1;">`;
+                    renderEmptyState('collections-container', 'You have no collections yet.', 'fa-folder-open');
+                    container.innerHTML += `</div>`;
+                    return;
+                }
+
+                for (let i = 0; i < collections.length; i++) {
+                    const basicCol = collections[i];
+                    // Fetch full collection to get items
+                    const col = await api.get(`/api/collections/${basicCol.id}`);
+                    
+                    const card = document.createElement('div');
+                    card.className = 'card flex flex-col justify-between';
+                    
+                    let itemsHtml = '';
+                    if (col.items && col.items.length > 0) {
+                        itemsHtml = `
+                            <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem;">
+                                    ${col.items.map(item => `
+                                        <li style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            <span style="color: var(--text-muted); font-size: 0.8rem;">[${item.source_type}]</span>
+                                            <a target="_blank" href="${item.url || '#'}" style="color: var(--text-main); flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</a>
+                                            <i class="fas fa-times remove-item-btn" data-col-id="${col.id}" data-item-id="${item.id}" style="cursor: pointer; color: var(--accent-video);"></i>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    } else {
+                        itemsHtml = `<p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem;">No items saved yet.</p>`;
+                    }
+
+                    card.innerHTML = `
+                        <div style="cursor: pointer;" onclick="openCollectionModal(${col.id})">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="card-title" style="color: #fff; transition: color 0.2s;"><i class="fas fa-folder" style="color: var(--accent-secondary); margin-right: 0.5rem; filter: drop-shadow(0 0 5px var(--accent-secondary));"></i> <span class="hover-text-accent">${col.name}</span></h3>
+                                <span class="badge" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: #fff;">${col.items ? col.items.length : 0} items</span>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"><i class="fas fa-external-link-alt"></i> Click to view full collection</p>
+                            ${itemsHtml}
+                        </div>
+                        <div class="flex justify-between mt-4 pt-4" style="border-top: 1px solid var(--border-color);">
+                            <button class="btn btn-outline btn-sm edit-btn" data-id="${col.id}" data-name="${col.name}"><i class="fas fa-edit"></i> Rename</button>
+                            <button class="btn btn-danger btn-sm del-btn" data-id="${col.id}"><i class="fas fa-trash"></i> Delete</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                }
+
+                // Add hover effect for the collection title
+                const style = document.createElement('style');
+                style.textContent = `
+                    .hover-text-accent:hover { color: var(--accent-primary); }
+                `;
+                document.head.appendChild(style);
+
+                // Attach remove item listeners
+                document.querySelectorAll('.remove-item-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation(); // prevent modal open
+                        const colId = e.currentTarget.getAttribute('data-col-id');
+                        const itemId = e.currentTarget.getAttribute('data-item-id');
+                        try {
+                            await api.del(`/api/collections/${colId}/items/${itemId}`);
+                            showToast('Item removed from collection', 'success');
+                            loadCollections();
+                        } catch(err) {
+                            showToast(err.message, 'error');
+                        }
+                    });
+                });
+
+                // Attach delete listeners
+                document.querySelectorAll('.del-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        if (!confirm('Are you sure you want to delete this collection?')) return;
+                        const id = e.currentTarget.getAttribute('data-id');
+                        try {
+                            await api.del(`/api/collections/${id}`);
+                            showToast('Collection deleted', 'success');
+                            loadCollections();
+                        } catch(err) {
+                            showToast(err.message, 'error');
+                        }
+                    });
+                });
+
+                // Attach edit listeners
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.currentTarget.getAttribute('data-id');
+                        const oldName = e.currentTarget.getAttribute('data-name');
+                        const newName = prompt('Enter new name:', oldName);
+                        if (newName && newName !== oldName) {
+                            try {
+                                await api.put(`/api/collections/${id}`, { name: newName });
+                                showToast('Collection renamed', 'success');
+                                loadCollections();
+                            } catch(err) {
+                                showToast(err.message, 'error');
+                            }
+                        }
+                    });
+                });
+
+            } catch (err) {
+                showToast(err.message, 'error');
+                container.innerHTML = `<div style="grid-column: 1 / -1;">`;
+                renderEmptyState('collections-container', `Error: ${err.message}`, 'fa-exclamation-triangle');
+                container.innerHTML += `</div>`;
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('new-collection-name');
+            const name = input.value.trim();
+            if (!name) return;
+
+            const btn = e.target.querySelector('button');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                await api.post('/api/collections', { name });
+                showToast('Collection created successfully!', 'success');
+                input.value = '';
+                loadCollections();
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        });
+
+        // Modal Logic
+        function getBadgeHtml(sourceType) {
+            let className = '';
+            let text = '';
+            let icon = '';
+            switch(sourceType.toLowerCase()) {
+                case 'gnews':
+                case 'news':
+                    className = 'badge-news'; text = 'News'; icon = 'fa-newspaper'; break;
+                case 'youtube':
+                case 'video':
+                    className = 'badge-video'; text = 'Video'; icon = 'fa-play-circle'; break;
+                case 'lemmy':
+                case 'discuss':
+                case 'discussion':
+                    className = 'badge-discuss'; text = 'Discuss'; icon = 'fa-comments'; break;
+                default:
+                    className = 'badge-news'; text = sourceType; icon = 'fa-tag';
+            }
+            return `<span class="badge ${className}"><i class="fas ${icon}"></i> ${text}</span>`;
+        }
+
+        window.openCollectionModal = async (colId) => {
+            document.getElementById('collection-modal').classList.remove('hidden');
+            const container = document.getElementById('modal-items-container');
+            const title = document.getElementById('modal-collection-title');
+            
+            container.innerHTML = '<div class="spinner"></div><p style="text-align:center;">Loading items...</p>';
+            title.textContent = "Loading...";
+
+            try {
+                const col = await api.get(`/api/collections/${colId}`);
+                title.textContent = col.name;
+
+                if (!col.items || col.items.length === 0) {
+                    container.innerHTML = '<p class="text-muted" style="text-align:center;">This collection is empty.</p>';
+                    return;
+                }
+
+                container.innerHTML = col.items.map(item => {
+                    const st = (item.source_type || 'news').toLowerCase();
+                    const cardSource = st.includes('video') ? 'youtube' : st.includes('discuss') ? 'lemmy' : 'gnews';
+                    const relScore = Math.round((item.relevance_score || 0) * 100);
+
+                    let badgesHtml = '';
+                    if (item.sentiment_label) {
+                        const icon = item.sentiment_label === 'positive' ? 'fa-arrow-up text-green-400' : item.sentiment_label === 'negative' ? 'fa-arrow-down text-red-400' : 'fa-minus text-gray-400';
+                        badgesHtml += `<span class="badge" style="border: 1px solid rgba(255,255,255,0.1);"><i class="fas ${icon}"></i> ${item.sentiment_label}</span>`;
+                    }
+                    if (item.credibility_tier) {
+                        badgesHtml += `<span class="badge" style="border: 1px solid rgba(255,255,255,0.1);"><i class="fas fa-shield-alt" style="color: var(--accent-secondary);"></i> ${item.credibility_tier}</span>`;
+                    }
+
+                    return `
+                        <div class="card mb-4" data-source="${cardSource}">
+                            <div class="card-header">
+                                <div style="flex-grow: 1; padding-right: 1rem;">
+                                    <a target="_blank" href="${item.url || '#'}">
+                                        <h3 class="card-title">${item.title || 'Untitled'}</h3>
+                                    </a>
+                                    <div class="card-meta" style="flex-wrap: wrap;">
+                                        ${getBadgeHtml(item.source_type || '')}
+                                        ${badgesHtml}
+                                        <span><i class="far fa-clock"></i> ${new Date(item.published_at || Date.now()).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                                <div class="relevance-score" style="--score: ${relScore}%" title="Relevance Score: ${relScore}%">
+                                    <span>${relScore}</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                ${item.summary || 'No summary available.'}
+                            </div>
+                            <div class="card-footer">
+                                <a target="_blank" href="${item.url || '#'}" class="btn btn-outline btn-sm"><i class="fas fa-external-link-alt"></i> Read Original</a>
+                                <button class="btn btn-danger btn-sm" onclick="window.removeItemFromModal(${col.id}, ${item.id})"><i class="fas fa-trash"></i> Remove</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                container.innerHTML = `<p class="text-muted" style="color: var(--accent-video);">Error: ${err.message}</p>`;
+            }
+        };
+
+        window.removeItemFromModal = async (colId, itemId) => {
+            if (!confirm("Remove this item?")) return;
+            try {
+                await api.del(`/api/collections/${colId}/items/${itemId}`);
+                showToast('Item removed', 'success');
+                openCollectionModal(colId); // refresh modal
+                loadCollections(); // refresh background
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        document.getElementById('close-collection-modal').addEventListener('click', () => {
+            document.getElementById('collection-modal').classList.add('hidden');
+        });
+
+        loadCollections();
+    </script>
+
+    <!-- Collection Detail Modal -->
+    <div id="collection-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; overflow-y: auto;">
+        <div class="container" style="padding-top: 4rem; padding-bottom: 4rem; max-width: 800px;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="modal-collection-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-folder-open" style="color: var(--accent-secondary);"></i> Collection</h2>
+                <button class="btn btn-outline" id="close-collection-modal"><i class="fas fa-times"></i> Close</button>
+            </div>
+            <div id="modal-items-container" class="flex flex-col">
+                <!-- Items injected here -->
+            </div>
+        </div>
+    </div>
+</body>
+</html>
