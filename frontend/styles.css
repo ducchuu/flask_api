@@ -427,10 +427,45 @@ label.field > span { display: block; font-size: 11px; color: var(--muted); margi
 @media (max-width: 820px) {
   .shell { grid-template-columns: 1fr; }
   .sidebar { position: fixed; bottom: 0; top: auto; height: auto; width: 100%; flex-direction: row; border-right: none; border-top: 1px solid var(--stroke); padding: 8px; z-index: 60; overflow-x: auto; }
+  .sidebar { justify-content: center; gap: 4px; padding: 10px 8px; }
   .sidebar .logo, .sidebar .spacer, .sidebar .user-pill, .nav-item span.txt { display: none; }
-  .sidebar .nav-item { flex-direction: column; gap: 3px; padding: 8px 16px; }
-  .content { padding: 22px 18px 100px; }
+  .sidebar .nav-item { flex-direction: column; gap: 3px; padding: 11px 22px; }
+  .sidebar .nav-item svg { width: 24px; height: 24px; }
+  .sidebar .nav-item.active { box-shadow: none; background: var(--panel-2); }
+  .content { padding: 22px 18px 110px; }
   .hero-canvas-wrap { width: 92vw; height: 260px; }
+  /* logout lives top-right on mobile since the sidebar user-pill is hidden */
+  .shell .mobile-logout { display: inline-flex; align-items: center; position: fixed; top: 12px; right: 12px; z-index: 70;
+    font-size: 13px; font-weight: 600; color: var(--text); padding: 8px 15px; border-radius: 999px;
+    background: rgba(20,20,24,0.6); border: 1px solid var(--stroke-2); backdrop-filter: blur(12px); }
+  .mobile-logout:active { transform: translateY(1px); }
+}
+.mobile-logout { display: none; }
+
+/* phones: minimalist, centered dashboard chrome */
+@media (max-width: 640px) {
+  .feed-stats { grid-template-columns: 1fr; gap: 0; margin-bottom: 20px; }
+  .feed-stats .fstat:not(.fstat-mix) { display: none; }   /* drop the big stat numbers on phones */
+  .fstat-mix { align-items: center; text-align: center; padding: 16px; }
+  .fstat-mix .mix-legend { justify-content: center; }
+  .page-head { justify-content: center; text-align: center; margin-bottom: 22px; }
+  .page-head > div { width: 100%; }
+  .page-head h1 { padding-left: 0; }
+  .page-head h1::before { display: none; }
+  .page-head p { margin-left: auto; margin-right: auto; max-width: 34ch; }
+  .filterbar { justify-content: center; }
+  /* give titles full width; push icons to their own row */
+  .story-top { flex-direction: column; }
+  .story-top-right { width: 100%; justify-content: space-between; }
+  .item-row { flex-wrap: wrap; }
+  .item-actions { flex: 0 0 100%; justify-content: flex-end; margin-top: 8px; }
+  /* settings: give sliders more room and center the radar below them */
+  .slider-row { gap: 10px; margin-bottom: 16px; }
+  .slider-row label { width: 90px; font-size: 13px; }
+  .slider-row .pct { width: 42px; }
+  .weights-wrap { gap: 14px; justify-content: center; }
+  .radar { margin: 4px auto 0; }
+  .chart-card { margin-bottom: 18px; }
 }
 
 /* phones: tighten spacing and chart labels so nothing overflows */
@@ -445,14 +480,12 @@ label.field > span { display: block; font-size: 11px; color: var(--muted); margi
   .story-top-right { gap: 8px; }
 }
 
-/* big screens / monitors: widen the column cap and run the feed two-up */
+/* big screens / monitors: widen the column cap; feed stays one story per row */
 @media (min-width: 1500px) {
   .content { max-width: 1340px; padding: 40px 56px 110px; }
-  .grid-stories { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
 }
 @media (min-width: 2100px) {
   .content { max-width: 1640px; }
-  .grid-stories { grid-template-columns: 1fr 1fr 1fr; }
 }
 
 /* small source dot used in collection previews */

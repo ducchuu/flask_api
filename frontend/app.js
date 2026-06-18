@@ -638,8 +638,11 @@ function renderShell(active, pageFn) {
         </div>
       </aside>
       <main class="main"><div class="content" id="page"></div></main>
+      <button class="mobile-logout" id="mLogout">Log out</button>
     </div>`;
-  $('#logout').onclick = (e) => { e.preventDefault(); clearSession(); toast('Logged out'); go('#/'); };
+  const doLogout = (e) => { e.preventDefault(); clearSession(); toast('Logged out'); go('#/'); };
+  $('#logout').onclick = doLogout;
+  $('#mLogout').onclick = doLogout;
   pageFn();
 }
 
@@ -1143,9 +1146,12 @@ async function renderSettings() {
         <div id="weights">${Object.keys(DEFAULT_WEIGHTS).map((k) => sliderHTML(k, k, w[k])).join('')}</div>
         ${radarSVG(Object.keys(DEFAULT_WEIGHTS).map((k) => ({ label: k[0].toUpperCase() + k.slice(1), value: w[k] })), 'weightsRadar')}
       </div>
-      <h3 style="margin-top:18px">Source preference</h3><p class="hint">Bias the score toward sources you trust.</p>
+    </div>
+
+    <div class="chart-card glass">
+      <h3>Source preference</h3><p class="hint">Bias the score toward sources you trust.</p>
       <div id="prefs">${['news', 'video', 'discussion'].map((k) => sliderHTML(k, SOURCES[k].label, prefs[k])).join('')}</div>
-      <button class="btn primary" style="margin-top:10px" data-action="save-weights">Save and rescore</button>
+      <button class="btn primary" style="margin-top:16px" data-action="save-weights">Save and rescore</button>
     </div>
 
     <div class="chart-card glass">
