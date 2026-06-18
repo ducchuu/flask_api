@@ -11,7 +11,12 @@ then open http://localhost:5000.
 """
 from pathlib import Path
 
+from dotenv import load_dotenv
 from flask import send_from_directory
+
+# Load backend/.env explicitly so the API keys are picked up no matter which
+# directory the server is launched from.
+load_dotenv(Path(__file__).parent / "backend" / ".env")
 
 from backend.app import create_app
 
