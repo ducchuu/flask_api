@@ -36,6 +36,36 @@ DEFAULT_WEIGHTS = {
 # Default per-source-type preference, feeding the "source" component.
 DEFAULT_SOURCE_PREFS = {"news": 0.8, "video": 0.5, "discussion": 0.7}
 
+# Language codes the GNews/YouTube fetchers can filter by. Kept in sync with
+# the choices the frontend offers in Settings.
+SUPPORTED_LANGUAGES = {
+    "en", "es", "fr", "de", "it", "pt", "nl", "ru", "zh", "ja", "ar", "hi",
+}
+
+
+def _parse_languages(raw: Optional[str]) -> List[str]:
+    """Decode a languages_json column into at most three valid language codes.
+
+    Anything that is not a list of recognised two-letter codes is ignored, so
+    a user can never push a bad value through to the upstream APIs.
+    """
+    if not raw:
+        return []
+    try:
+        codes = json.loads(raw)
+    except (ValueError, TypeError):
+        return []
+    if not isinstance(codes, list):
+        return []
+    out: List[str] = []
+    for code in codes:
+        low = code.lower() if isinstance(code, str) else None
+        if low in SUPPORTED_LANGUAGES and low not in out:
+            out.append(low)
+        if len(out) == 3:
+            break
+    return out
+
 
 def _merge_overrides(defaults: Dict[str, float], raw: Optional[str]) -> Dict[str, float]:
     """Merge a user's JSON overrides over a set of default float values.
@@ -139,6 +169,7 @@ def generate_feed(
     freshness_days: Optional[int] = None,
     weights_json: Optional[str] = None,
     source_prefs_json: Optional[str] = None,
+    languages_json: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Generate a scored, enriched, clustered feed for a user.
 
@@ -152,6 +183,8 @@ def generate_feed(
                            falls back to defaults when None or invalid.
         source_prefs_json: The user's tuned per-source preferences as a JSON
                            string; falls back to defaults when None or invalid.
+        languages_json:    Up to three language codes as a JSON string; when set,
+                           news and video are fetched only in those languages.
 
     Returns:
         List of story dicts, each containing a list of enriched items.
@@ -176,15 +209,21 @@ def generate_feed(
         user_interests = queries
     raw_items: List[Dict[str, Any]] = []
 
+    # one fetch per language when set, otherwise a single language-agnostic fetch.
+    # Lemmy has no language filter, so it stays outside the language loop.
+    languages = _parse_languages(languages_json) or [None]
+
     for q in queries:
-        if not source_filter or source_filter == "news":
-            raw_items.extend(
-                _safe_fetch(fetch_gnews, q, f"gnews_{q}")
-            )
-        if not source_filter or source_filter == "video":
-            raw_items.extend(
-                _safe_fetch(fetch_youtube, q, f"youtube_{q}")
-            )
+        for lang in languages:
+            sfx = f"_{lang}" if lang else ""
+            if not source_filter or source_filter == "news":
+                raw_items.extend(
+                    _safe_fetch(lambda qq, _l=lang: fetch_gnews(qq, _l), q, f"gnews_{q}{sfx}")
+                )
+            if not source_filter or source_filter == "video":
+                raw_items.extend(
+                    _safe_fetch(lambda qq, _l=lang: fetch_youtube(qq, _l), q, f"youtube_{q}{sfx}")
+                )
         if not source_filter or source_filter == "discussion":
             raw_items.extend(
                 _safe_fetch(fetch_lemmy, q, f"lemmy_{q}")

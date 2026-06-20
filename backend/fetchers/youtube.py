@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -12,9 +12,10 @@ load_dotenv()
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
-def fetch_youtube(query: str) -> List[Dict[str, Any]]:
+def fetch_youtube(query: str, lang: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    updated version with 2 calls, one for searching and sacend to retrieve details fo rsearched query
+    updated version with 2 calls, one for searching and sacend to retrieve details fo rsearched query.
+    lang, when given, biases the search toward results in that language.
     """
     if os.getenv("FIXTURE_MODE") == "1":
         fixture_path = FIXTURE_DIR / "youtube_sample.json"
@@ -35,7 +36,9 @@ def fetch_youtube(query: str) -> List[Dict[str, Any]]:
         "maxResults": 10,
         "key": api_key,
     }
-    
+    if lang:
+        search_params["relevanceLanguage"] = lang
+
     try:
         search_resp = requests.get(search_url, params=search_params, timeout=5)
     except requests.RequestException as e:

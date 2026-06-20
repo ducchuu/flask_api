@@ -132,7 +132,7 @@ def get_me() -> Any:
 def update_me() -> Any:
     """Update the authenticated user's profile.
 
-    Allowed fields: username, weights_json, source_prefs_json.
+    Allowed fields: username, weights_json, source_prefs_json, languages_json.
     All other fields (id, password_hash, created_at) are silently ignored.
 
     Returns:
@@ -149,7 +149,7 @@ def update_me() -> Any:
         }}), 400
 
     # Only these fields can be updated - sensitive fields silently ignored
-    allowed = {"username", "weights_json", "source_prefs_json"}
+    allowed = {"username", "weights_json", "source_prefs_json", "languages_json"}
     updates = {k: v for k, v in data.items() if k in allowed}
 
     if not updates:

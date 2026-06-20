@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash   TEXT NOT NULL,
     weights_json    TEXT,           -- relevance weights the user can tune
     source_prefs_json TEXT,         -- how much news/video/discussion they want
+    languages_json  TEXT,           -- up to three language codes to fetch news/video in
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

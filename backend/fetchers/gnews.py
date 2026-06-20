@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -12,9 +12,9 @@ load_dotenv()
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
-def fetch_gnews(query: str) -> List[Dict[str, Any]]:
+def fetch_gnews(query: str, lang: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    fetches news articles from gnews matching the query
+    fetches news articles from gnews matching the query, optionally in one language
     """
     if os.getenv("FIXTURE_MODE") == "1":
         fixture_path = FIXTURE_DIR / "gnews_sample.json"
@@ -28,7 +28,9 @@ def fetch_gnews(query: str) -> List[Dict[str, Any]]:
     url = "https://gnews.io/api/v4/search"
     headers = {"User-Agent": "PulseAggregator/1.0"}
     params = {"q": query, "token": api_key}
-    
+    if lang:
+        params["lang"] = lang
+
     try:
         response = requests.get(url, headers=headers, params=params, timeout=5)
     except requests.RequestException as e:

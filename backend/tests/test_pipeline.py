@@ -3,9 +3,20 @@ from unittest.mock import patch, call
 from backend.services.pipeline import (
     generate_feed,
     resolve_weights,
+    _parse_languages,
     DEFAULT_WEIGHTS,
     DEFAULT_SOURCE_PREFS,
 )
+
+
+def test_parse_languages_validates_and_caps():
+    """Only known codes survive, deduped, lowercased, and capped at three."""
+    assert _parse_languages(None) == []
+    assert _parse_languages("not json") == []
+    assert _parse_languages('{"en": 1}') == []          # not a list
+    assert _parse_languages('["en", "xx", "fr"]') == ["en", "fr"]  # drops unknown
+    assert _parse_languages('["EN", "en"]') == ["en"]   # lowercase + dedupe
+    assert _parse_languages('["en","fr","es","de"]') == ["en", "fr", "es"]  # cap 3
 
 
 def _make_raw_item(source_type="news", source_name="Tech Site", title="AI News",

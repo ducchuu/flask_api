@@ -422,6 +422,10 @@ label.field > span { display: block; font-size: 11px; color: var(--muted); margi
 .tag button { background: none; border: none; color: var(--muted); display: grid; place-items: center; }
 .tag button:hover { color: var(--amber); }
 .tag button svg { width: 14px; height: 14px; }
+/* selectable language chips in Settings */
+button.tag { cursor: pointer; color: var(--text); transition: border-color .15s, background .15s; }
+button.tag:hover { border-color: var(--amber); }
+button.tag.on { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 18%, var(--panel)); color: var(--text); }
 
 @media (max-width: 900px) { .nav-links { display: none; } .float-card { display: none; } }
 @media (max-width: 820px) {

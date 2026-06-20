@@ -40,6 +40,7 @@ class User:
     password_hash: str
     weights_json: Optional[str]
     source_prefs_json: Optional[str]
+    languages_json: Optional[str]
     created_at: str
 
     @classmethod
@@ -58,6 +59,7 @@ class User:
             password_hash=row["password_hash"],
             weights_json=row["weights_json"],
             source_prefs_json=row["source_prefs_json"],
+            languages_json=row["languages_json"],
             created_at=row["created_at"],
         )
 
@@ -72,6 +74,7 @@ class User:
             "username": self.username,
             "weights_json": self.weights_json,
             "source_prefs_json": self.source_prefs_json,
+            "languages_json": self.languages_json,
             "created_at": self.created_at,
         }
 

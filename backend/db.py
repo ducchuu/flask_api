@@ -41,4 +41,10 @@ def init_db() -> None:
     """
     conn = get_db()
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    # ponytail: tiny migration for columns added after a db already exists;
+    # ALTER errors if the column is already there, which we ignore.
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN languages_json TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()

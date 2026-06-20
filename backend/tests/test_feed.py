@@ -45,6 +45,7 @@ def test_get_feed_handles_filters(mock_generate, app, client, db):
         # the user's tuned scoring prefs, unset for a freshly made user
         weights_json=None,
         source_prefs_json=None,
+        languages_json=None,
     )
 
 

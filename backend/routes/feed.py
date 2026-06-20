@@ -58,6 +58,7 @@ def get_items() -> Any:
             # the user's tuned scoring preferences, set via PATCH /api/users/me
             weights_json=user.weights_json,
             source_prefs_json=user.source_prefs_json,
+            languages_json=user.languages_json,
         )
         return jsonify(feed), 200
     except Exception as e:

@@ -15,6 +15,13 @@ const SOURCES = {
 };
 const DEFAULT_WEIGHTS = { interest: 0.4, recency: 0.3, popularity: 0.2, source: 0.1 };
 const DEFAULT_PREFS   = { news: 0.8, video: 0.5, discussion: 0.7 };
+// languages the user can pick (up to 3) to filter fetched news/video.
+// codes must match SUPPORTED_LANGUAGES in backend/services/pipeline.py
+const LANGS = {
+  en: 'English', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese',
+  nl: 'Dutch', ru: 'Russian', zh: 'Chinese', ja: 'Japanese', ar: 'Arabic', hi: 'Hindi',
+};
+const MAX_LANGS = 3;
 
 // inline icons (no emojis anywhere in the UI)
 const ICONS = {
@@ -115,6 +122,7 @@ function clearSession() {
 }
 function userWeights() { try { return { ...DEFAULT_WEIGHTS, ...JSON.parse(state.user?.weights_json || '{}') }; } catch { return { ...DEFAULT_WEIGHTS }; } }
 function userPrefs()   { try { return { ...DEFAULT_PREFS,   ...JSON.parse(state.user?.source_prefs_json || '{}') }; } catch { return { ...DEFAULT_PREFS }; } }
+function userLangs()   { try { const v = JSON.parse(state.user?.languages_json || '[]'); return Array.isArray(v) ? v.filter((c) => LANGS[c]) : []; } catch { return []; } }
 
 // ---------------------------------------------------------------------------
 // router
@@ -1119,7 +1127,7 @@ function wireSpark() {
 // ===========================================================================
 async function renderSettings() {
   const p = $('#page');
-  const w = userWeights(); const prefs = userPrefs();
+  const w = userWeights(); const prefs = userPrefs(); const langSel = userLangs();
   p.innerHTML = `
     <div class="page-head"><div><h1>Settings</h1><p>Your profile, interests, and how Pulse scores relevance.</p></div></div>
 
@@ -1152,6 +1160,15 @@ async function renderSettings() {
       <h3>Source preference</h3><p class="hint">Bias the score toward sources you trust.</p>
       <div id="prefs">${['news', 'video', 'discussion'].map((k) => sliderHTML(k, SOURCES[k].label, prefs[k])).join('')}</div>
       <button class="btn primary" style="margin-top:16px" data-action="save-weights">Save and rescore</button>
+    </div>
+
+    <div class="chart-card glass">
+      <h3>Languages</h3><p class="hint">Pick up to ${MAX_LANGS}. News and video are fetched only in these. None selected means no language filter.</p>
+      <div id="langs" class="tags">${Object.entries(LANGS).map(([code, name]) => {
+        const on = langSel.includes(code);
+        return `<button type="button" class="tag${on ? ' on' : ''}" data-action="toggle-lang" data-code="${code}" aria-pressed="${on}">${esc(name)}</button>`;
+      }).join('')}</div>
+      <button class="btn primary" style="margin-top:16px" data-action="save-langs">Save languages</button>
     </div>
 
     <div class="chart-card glass">
@@ -1346,6 +1363,22 @@ document.addEventListener('click', async (e) => {
     const weights = readSliders('#weights'); const prefs = readSliders('#prefs');
     const r = await api('/users/me', { method: 'PATCH', body: { weights_json: JSON.stringify(weights), source_prefs_json: JSON.stringify(prefs) } });
     if (r.ok) { state.user = r.data.user; localStorage.setItem('pulse_user', JSON.stringify(state.user)); toast('Saved, your feed will rescore', 'ok'); }
+    else toast(errMsg(r), 'err');
+    return;
+  }
+
+  if (a === 'toggle-lang') {
+    const on = t.classList.contains('on');
+    if (!on && app().querySelectorAll('#langs .tag.on').length >= MAX_LANGS) {
+      toast(`Pick at most ${MAX_LANGS} languages`, 'err'); return;
+    }
+    t.classList.toggle('on'); t.setAttribute('aria-pressed', String(!on));
+    return;
+  }
+  if (a === 'save-langs') {
+    const codes = Array.from(app().querySelectorAll('#langs .tag.on')).map((b) => b.dataset.code);
+    const r = await api('/users/me', { method: 'PATCH', body: { languages_json: JSON.stringify(codes) } });
+    if (r.ok) { state.user = r.data.user; localStorage.setItem('pulse_user', JSON.stringify(state.user)); toast('Saved, your feed will use these languages', 'ok'); }
     else toast(errMsg(r), 'err');
     return;
   }
