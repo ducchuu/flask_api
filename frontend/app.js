@@ -1069,22 +1069,32 @@ function sparkHTML(data) {
   _spark = { entries, lo: 0, hi: entries.length - 1 };
   return `<div class="spark-wrap">
     <div class="spark-tip" id="sparkTip"></div>
+    <div class="spark-yaxis" id="sparkY"></div>
     <svg class="spark" id="spark" viewBox="0 0 720 160" preserveAspectRatio="none" aria-label="Items published per day"></svg>
-    <div class="spark-x"><span id="sparkLo"></span><span class="spark-hint">hover for values · scroll to zoom · drag to pan · double-click to reset</span><span id="sparkHi"></span></div>
+    <div class="spark-xaxis" id="sparkX"></div>
+    <div class="spark-x"><span class="spark-hint">hover for values · scroll to zoom · drag to pan · double-click to reset</span></div>
   </div>`;
 }
 function drawSpark() {
   const svg = $('#spark'); if (!svg) return;
   const { entries, lo, hi } = _spark;
   const win = entries.slice(lo, hi + 1);
-  const w = 720, h = 160, pad = 24, n = win.length;
+  // padL/padB leave room for the y-axis counts and x-axis dates
+  const w = 720, h = 160, padL = 36, padR = 14, padT = 14, padB = 18, n = win.length;
   const max = Math.max(...win.map((e) => e[1]), 1);
-  const x = (i) => n <= 1 ? w / 2 : pad + (i * (w - 2 * pad)) / (n - 1);
-  const y = (v) => h - pad - (v / max) * (h - 2 * pad);
+  const x = (i) => n <= 1 ? (padL + w - padR) / 2 : padL + (i * (w - padL - padR)) / (n - 1);
+  const y = (v) => h - padB - (v / max) * (h - padT - padB);
   // stash for the hover handler so it maps the cursor back to a data point
   _spark.win = win; _spark.x = x; _spark.y = y; _spark.w = w; _spark.h = h;
   const pts = win.map((e, i) => `${x(i).toFixed(1)},${y(e[1]).toFixed(1)}`).join(' ');
-  const area = `${pad},${h - pad} ${pts} ${x(n - 1).toFixed(1)},${h - pad}`;
+  const area = `${x(0).toFixed(1)},${h - padB} ${pts} ${x(n - 1).toFixed(1)},${h - padB}`;
+
+  // y-axis: 0 / mid / max horizontal gridlines (deduped for tiny ranges)
+  const yticks = [...new Set([0, Math.round(max / 2), max])];
+  const grid = yticks.map((t) =>
+    `<line class="spark-grid-line" x1="${padL}" x2="${w - padR}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" vector-effect="non-scaling-stroke"></line>`
+  ).join('');
+
   svg.innerHTML = `
     <defs>
       <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
@@ -1100,13 +1110,25 @@ function drawSpark() {
         <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
     </defs>
+    ${grid}
     <polygon points="${area}" fill="url(#sg)"></polygon>
     <polyline points="${pts}" fill="none" stroke="url(#slg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" filter="url(#sglow)"></polyline>
     ${win.map((e, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(e[1]).toFixed(1)}" r="3" fill="var(--hl)" stroke="#0c0d10" stroke-width="1" vector-effect="non-scaling-stroke"></circle>`).join('')}
-    <line id="sparkGuide" y1="${pad}" y2="${h - pad}" stroke="var(--hl-cool)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" opacity="0"></line>
+    <line id="sparkGuide" y1="${padT}" y2="${h - padB}" stroke="var(--hl-cool)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" opacity="0"></line>
     <circle id="sparkDot" r="5" fill="var(--hl)" stroke="#0c0d10" stroke-width="1.5" vector-effect="non-scaling-stroke" opacity="0"></circle>`;
-  $('#sparkLo').textContent = win[0][0];
-  $('#sparkHi').textContent = win[win.length - 1][0];
+
+  // axis labels live in HTML so preserveAspectRatio="none" doesn't stretch the text
+  $('#sparkY').innerHTML = yticks.map((t) =>
+    `<span style="top:${(y(t) / h * 100).toFixed(2)}%">${t}</span>`).join('');
+  const step = Math.max(1, Math.ceil((n - 1) / 5));
+  let xs = '';
+  for (let i = 0; i < n; i += step) {
+    xs += `<span style="left:${(x(i) / w * 100).toFixed(2)}%">${win[i][0].slice(5)}</span>`;
+  }
+  if ((n - 1) % step !== 0) {  // make sure the latest day is always labelled
+    xs += `<span style="left:${(x(n - 1) / w * 100).toFixed(2)}%">${win[n - 1][0].slice(5)}</span>`;
+  }
+  $('#sparkX').innerHTML = xs;
 }
 function wireSpark() {
   const svg = $('#spark'); if (!svg) return;
@@ -1159,8 +1181,11 @@ function wireSpark() {
     d.setAttribute('cx', gx); d.setAttribute('cy', gy); d.setAttribute('opacity', '1');
     if (tip) {
       tip.innerHTML = `<b>${val}</b> item${val === 1 ? '' : 's'}<span>${day}</span>`;
-      tip.style.left = `${gx / _spark.w * rect.width}px`;
-      tip.style.top = `${gy / _spark.h * rect.height}px`;
+      const pxX = gx / _spark.w * rect.width, pxY = gy / _spark.h * rect.height;
+      // keep the tooltip inside the (clipped) card: clamp x, flip below near the top
+      tip.style.left = `${Math.max(46, Math.min(rect.width - 46, pxX))}px`;
+      tip.style.top = `${pxY}px`;
+      tip.classList.toggle('below', pxY < 52);
       tip.style.opacity = '1';
     }
   });
