@@ -972,17 +972,32 @@ async function viewCollection(id) {
   const c = r.data; const items = c.items || [];
   modal(`
     <h3>${esc(c.name)}</h3>
-    <p style="color:var(--muted);margin-top:0">${esc(c.description || '')}</p>
-    ${items.length ? `<div class="pick-list">${items.map((it) => `
-      <div class="pick">
-        <div style="min-width:0">
-          <div style="font-weight:600">${esc(it.title)}</div>
-          <div class="story-meta"><span class="badge ${SOURCES[it.source_type]?.cls || 'ghost'}">${SOURCES[it.source_type]?.label || it.source_type}</span></div>
-        </div>
-        <button class="btn sm ghost" data-action="rm-coll-item" data-coll="${id}" data-item="${it.id}">Remove</button>
-      </div>`).join('')}</div>`
+    <p style="color:var(--muted);margin-top:0">${esc(c.description || '')} <span class="hint">· ${items.length} saved</span></p>
+    ${items.length ? `<div class="coll-list">${items.map((it) => collItemHTML(it, id)).join('')}</div>`
       : '<p style="color:var(--muted)">No items saved here yet.</p>'}
     <div class="row"><button class="btn" data-action="close-modal">Close</button></div>`);
+}
+
+// one saved item: thumbnail + title that links out to the original, plus remove
+function collItemHTML(it, collId) {
+  const cls = SOURCES[it.source_type]?.cls || 'ghost';
+  const label = SOURCES[it.source_type]?.label || it.source_type;
+  let host = '';
+  if (it.url) { try { host = new URL(it.url).hostname.replace(/^www\./, ''); } catch {} }
+  const inner = `
+    ${itemThumb(it, false)}
+    <div class="coll-item-main">
+      <div class="coll-item-title">${esc(it.title)}</div>
+      <div class="story-meta"><span class="badge ${cls}">${label}</span>${host ? `<span class="coll-host">${esc(host)}</span>` : ''}</div>
+    </div>
+    ${it.url ? `<span class="coll-go" title="Open">${ic('arrow')}</span>` : ''}`;
+  const body = it.url
+    ? `<a class="coll-item-link" href="${esc(it.url)}" target="_blank" rel="noopener">${inner}</a>`
+    : `<div class="coll-item-link">${inner}</div>`;
+  return `<div class="coll-item">
+    ${body}
+    <button class="btn sm ghost" data-action="rm-coll-item" data-coll="${collId}" data-item="${it.id}">Remove</button>
+  </div>`;
 }
 
 // ===========================================================================
