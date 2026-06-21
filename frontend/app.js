@@ -1068,8 +1068,9 @@ function sparkHTML(data) {
   if (entries.length < 2) return '<p style="color:var(--muted)">Not enough dated items to chart a trend yet.</p>';
   _spark = { entries, lo: 0, hi: entries.length - 1 };
   return `<div class="spark-wrap">
+    <div class="spark-tip" id="sparkTip"></div>
     <svg class="spark" id="spark" viewBox="0 0 720 160" preserveAspectRatio="none" aria-label="Items published per day"></svg>
-    <div class="spark-x"><span id="sparkLo"></span><span class="spark-hint">scroll to zoom · drag to pan · double-click to reset</span><span id="sparkHi"></span></div>
+    <div class="spark-x"><span id="sparkLo"></span><span class="spark-hint">hover for values · scroll to zoom · drag to pan · double-click to reset</span><span id="sparkHi"></span></div>
   </div>`;
 }
 function drawSpark() {
@@ -1080,14 +1081,30 @@ function drawSpark() {
   const max = Math.max(...win.map((e) => e[1]), 1);
   const x = (i) => n <= 1 ? w / 2 : pad + (i * (w - 2 * pad)) / (n - 1);
   const y = (v) => h - pad - (v / max) * (h - 2 * pad);
+  // stash for the hover handler so it maps the cursor back to a data point
+  _spark.win = win; _spark.x = x; _spark.y = y; _spark.w = w; _spark.h = h;
   const pts = win.map((e, i) => `${x(i).toFixed(1)},${y(e[1]).toFixed(1)}`).join(' ');
   const area = `${pad},${h - pad} ${pts} ${x(n - 1).toFixed(1)},${h - pad}`;
   svg.innerHTML = `
-    <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="rgba(234,164,106,0.38)"/><stop offset="1" stop-color="rgba(234,164,106,0)"/></linearGradient></defs>
+    <defs>
+      <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="rgba(231,199,154,0.55)"/>
+        <stop offset="0.5" stop-color="rgba(234,164,106,0.16)"/>
+        <stop offset="1" stop-color="rgba(234,164,106,0)"/>
+      </linearGradient>
+      <linearGradient id="slg" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="var(--hl-cool)"/><stop offset="1" stop-color="var(--hl)"/>
+      </linearGradient>
+      <filter id="sglow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="3" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
     <polygon points="${area}" fill="url(#sg)"></polygon>
-    <polyline points="${pts}" fill="none" stroke="var(--hl)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
-    ${win.map((e, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(e[1]).toFixed(1)}" r="3" fill="var(--hl)" vector-effect="non-scaling-stroke"></circle>`).join('')}`;
+    <polyline points="${pts}" fill="none" stroke="url(#slg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" filter="url(#sglow)"></polyline>
+    ${win.map((e, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(e[1]).toFixed(1)}" r="3" fill="var(--hl)" stroke="#0c0d10" stroke-width="1" vector-effect="non-scaling-stroke"></circle>`).join('')}
+    <line id="sparkGuide" y1="${pad}" y2="${h - pad}" stroke="var(--hl-cool)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" opacity="0"></line>
+    <circle id="sparkDot" r="5" fill="var(--hl)" stroke="#0c0d10" stroke-width="1.5" vector-effect="non-scaling-stroke" opacity="0"></circle>`;
   $('#sparkLo').textContent = win[0][0];
   $('#sparkHi').textContent = win[win.length - 1][0];
 }
@@ -1120,6 +1137,34 @@ function wireSpark() {
   svg.addEventListener('pointerup', end);
   svg.addEventListener('pointercancel', end);
   svg.addEventListener('dblclick', () => { _spark.lo = 0; _spark.hi = n() - 1; drawSpark(); });
+
+  // hover: snap to the nearest point, show its exact value in a tooltip
+  const tip = $('#sparkTip');
+  const hideHover = () => {
+    const g = $('#sparkGuide'), d = $('#sparkDot');
+    if (g) g.setAttribute('opacity', '0');
+    if (d) d.setAttribute('opacity', '0');
+    if (tip) tip.style.opacity = '0';
+  };
+  svg.addEventListener('pointermove', (e) => {
+    if (dragX != null) return;              // dragging = pan, not hover
+    const win = _spark.win; if (!win || !win.length) return;
+    const rect = svg.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const idx = Math.round(frac * (win.length - 1));
+    const [day, val] = win[idx];
+    const gx = _spark.x(idx), gy = _spark.y(val);
+    const g = $('#sparkGuide'), d = $('#sparkDot');
+    g.setAttribute('x1', gx); g.setAttribute('x2', gx); g.setAttribute('opacity', '1');
+    d.setAttribute('cx', gx); d.setAttribute('cy', gy); d.setAttribute('opacity', '1');
+    if (tip) {
+      tip.innerHTML = `<b>${val}</b> item${val === 1 ? '' : 's'}<span>${day}</span>`;
+      tip.style.left = `${gx / _spark.w * rect.width}px`;
+      tip.style.top = `${gy / _spark.h * rect.height}px`;
+      tip.style.opacity = '1';
+    }
+  });
+  svg.addEventListener('pointerleave', hideHover);
 }
 
 // ===========================================================================
