@@ -10,6 +10,7 @@ from flask import Blueprint, g, request, jsonify
 
 from backend.auth import require_auth
 from backend.services.pipeline import generate_feed
+from backend.services.persistence import stamp_item_ids
 
 bp = Blueprint("feed", __name__, url_prefix="/api")
 
@@ -60,6 +61,9 @@ def get_items() -> Any:
             source_prefs_json=user.source_prefs_json,
             languages_json=user.languages_json,
         )
+        # persist the live items so each gets a real db id the frontend can
+        # save into a collection
+        feed = stamp_item_ids(feed)
         return jsonify(feed), 200
     except Exception as e:
         return jsonify({"error": "Failed to generate feed", "details": str(e)}), 500

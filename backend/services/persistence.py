@@ -64,6 +64,31 @@ def _insert_item(db: sqlite3.Connection, story_id: Optional[int], item: dict) ->
     )
 
 
+def stamp_item_ids(stories: list[dict]) -> list[dict]:
+    """Give every feed item a real database id so it can be saved.
+
+    The dashboard feed is built live in memory, so its items start with only
+    an external_id (a youtube/lemmy/news id) and no database id. The frontend
+    needs a real id to save an item into a collection. This inserts any item
+    that is not in the items table yet (matched by its unique external_id, so
+    repeats are ignored) and writes the database id back onto each item dict.
+    """
+    db = get_db()
+    for story in stories:
+        for item in story.get("items", []):
+            if not item.get("external_id"):
+                continue
+            _insert_item(db, None, item)  # INSERT OR IGNORE, no parent story
+            row = db.execute(
+                "SELECT id FROM items WHERE external_id = ?",
+                [item["external_id"]],
+            ).fetchone()
+            if row is not None:
+                item["id"] = row["id"]
+    db.commit()
+    return stories
+
+
 def save_stories(stories: list[dict]) -> dict[str, int]:
     """Persist clustered stories and their items, reporting how many were written.
 
