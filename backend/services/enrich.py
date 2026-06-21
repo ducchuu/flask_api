@@ -20,6 +20,15 @@ STOPWORDS = {
     "do", "does", "did", "has", "have", "had", "not", "no", "so",
     "if", "then", "than", "there", "here", "what", "which", "who",
     "will", "would", "can", "could", "should", "about",
+    # possessives / pronouns and other low-meaning words that kept showing up
+    "my", "me", "your", "yours", "us", "him", "his", "her", "hers",
+    "out", "up", "down", "into", "over", "off", "more", "most", "some",
+    "any", "all", "just", "like", "also", "via", "amp", "one", "two",
+    "get", "got", "make", "made", "want", "need", "see", "use", "using",
+    "new", "how", "why", "when", "where",
+    # url fragments and youtube-description boilerplate
+    "com", "www", "http", "https", "net", "org",
+    "subscribe", "channel", "link", "links", "follow", "video", "videos",
 }
 
 # curated trust lists: source name -> credibility tier, one table per source type
@@ -98,8 +107,13 @@ def keywords(text: Optional[str], top_n: int = 5) -> list[str]:
     """Return the top_n most frequent non-stopword tokens from the text."""
     if not text:
         return []
-    # split into lowercase alphanumeric tokens, dropping stopwords
-    tokens = [t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in STOPWORDS]
+    # drop urls first so link fragments (https, com, amzn) don't become "topics"
+    cleaned = re.sub(r"https?://\S+|www\.\S+", " ", text.lower())
+    # keep alphanumeric tokens, dropping single chars, pure numbers and stopwords
+    tokens = [
+        t for t in re.findall(r"[a-z0-9]+", cleaned)
+        if len(t) > 1 and not t.isdigit() and t not in STOPWORDS
+    ]
     if not tokens:
         return []
     # rank by frequency and keep the top_n

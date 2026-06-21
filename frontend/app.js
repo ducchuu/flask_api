@@ -761,8 +761,29 @@ async function renderDashboard() {
     $('#feed').innerHTML = stateBox('globe', 'Nothing here yet', 'Add interests in onboarding or try Search for a topic.', `<a class="btn primary" href="#/search">Go to Search</a>`);
     return;
   }
-  $('#feed').innerHTML = feedStatsHTML(r.stories) + `<div class="grid-stories">${r.stories.map((s, i) => storyCardHTML(s, i)).join('')}</div>`;
+  $('#feed').innerHTML = feedStatsHTML(r.stories) + topTopicsHTML(r.stories)
+    + `<div class="grid-stories">${r.stories.map((s, i) => storyCardHTML(s, i)).join('')}</div>`;
   observeReveals(); animateCounts(); animateRings(); wireSpotlight();
+  // clicking a topic runs it as a search
+  app().querySelectorAll('[data-topic]').forEach((b) => b.onclick = () => {
+    state.filters.query = b.dataset.topic; state.filters.source = ''; go('#/search');
+  });
+}
+
+// most-mentioned keywords across the fetched feed (already stop-word filtered
+// by the backend enrich step), shown as clickable topic tags
+function topTopicsHTML(stories) {
+  const m = {};
+  stories.flatMap((s) => s.items).forEach((i) => (i.keywords || []).forEach((k) => { m[k] = (m[k] || 0) + 1; }));
+  const top = Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  if (!top.length) return '';
+  const max = Math.max(...top.map((e) => e[1]));
+  return `<div class="topics-card glass" data-reveal>
+    <div class="topics-head"><span>Top topics</span><span class="hint">most mentioned across your sources · click to search</span></div>
+    <div class="topics-wrap">${top.map(([k, v]) =>
+      `<button class="topic-tag" data-topic="${esc(k)}" style="--w:${(v / max).toFixed(2)}">${esc(k)}<span class="topic-n">${v}</span></button>`
+    ).join('')}</div>
+  </div>`;
 }
 
 // ===========================================================================

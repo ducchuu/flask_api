@@ -378,6 +378,20 @@ label.field > span { display: block; font-size: 11px; color: var(--muted); margi
 .bar-fill { height: 100%; border-radius: 6px; transition: width .6s cubic-bezier(.2,.9,.3,1); min-width: 3px; }
 .bar-row .val { width: 44px; font-size: 13px; font-weight: 600; flex: 0 0 auto; }
 .bar-row:hover .lbl { color: var(--text); }
+/* ---------- top topics strip (dashboard) ---------- */
+.topics-card { padding: 16px 18px; margin-bottom: 16px; }
+.topics-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.topics-head > span:first-child { font-weight: 600; font-size: 15px; }
+.topics-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.topic-tag { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; color: var(--text);
+  border: 1px solid var(--stroke-2); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600;
+  background: rgba(234,164,106, calc(.05 + var(--w, 0) * .12));
+  transition: border-color .16s ease, transform .16s ease, color .16s ease; }
+.topic-tag:hover { border-color: var(--hl); color: var(--hl); transform: translateY(-1px); }
+.topic-n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
+  background: var(--panel-2); border-radius: 999px; padding: 1px 6px; }
+.topic-tag:hover .topic-n { color: var(--hl-cool); }
+
 /* ---------- saved items inside a collection ---------- */
 .coll-list { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 18px; max-height: 52vh; overflow-y: auto; }
 .coll-item { display: flex; align-items: stretch; gap: 8px; }
