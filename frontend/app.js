@@ -14,6 +14,11 @@ const SOURCES = {
   discussion: { label: 'Discussion', color: 'var(--lav)',  cls: 'discussion' },
 };
 const DEFAULT_WEIGHTS = { interest: 0.4, recency: 0.3, popularity: 0.2, source: 0.1 };
+// a slightly different amber shade per slider so each draggable track reads on its own
+const SLIDER_COLORS = {
+  interest: '#eaa46a', recency: '#f0bd80', popularity: '#e0934f', source: '#d2864a',
+  news: '#f3c98a', video: '#e8a85f', discussion: '#c87f42',
+};
 const DEFAULT_PREFS   = { news: 0.8, video: 0.5, discussion: 0.7 };
 // languages the user can pick (up to 3) to filter fetched news/video.
 // codes must match SUPPORTED_LANGUAGES in backend/services/pipeline.py
@@ -600,10 +605,11 @@ async function renderOnboarding() {
   draw();
 }
 function sliderHTML(key, label, val) {
+  const color = SLIDER_COLORS[key] || 'var(--hl)';
   return `<div class="slider-row">
     <label>${label}</label>
-    <input type="range" min="0" max="1" step="0.05" value="${val}" data-key="${key}" />
-    <span class="pct">${Math.round(val * 100)}%</span>
+    <input type="range" min="0" max="1" step="0.05" value="${val}" data-key="${key}" style="accent-color:${color}" />
+    <span class="pct" style="color:${color}">${Math.round(val * 100)}%</span>
   </div>`;
 }
 
