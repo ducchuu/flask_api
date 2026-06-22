@@ -836,7 +836,6 @@ function itemRowHTML(it) {
     it.published_at && timeAgo(it.published_at),
     it.read_time != null && `${it.read_time} min`,
     it.credibility && it.credibility !== 'unknown' && `cred ${esc(it.credibility)}`,
-    it.relevance != null && `score ${(+it.relevance).toFixed(2)}`,
   ].filter(Boolean);
   return `
     <div class="item-row">
@@ -847,11 +846,20 @@ function itemRowHTML(it) {
         <div class="item-sub">
           <span class="badge ${cls}">${SOURCES[it.source_type]?.label || it.source_type}</span>
           <span class="senti ${esc(it.sentiment)}">${esc(it.sentiment)}</span>
+          ${scorePill(it.relevance)}
           ${meta.map((m) => `<span>${m}</span>`).join('')}
         </div>
       </div>
       ${itemActionsHTML(it.id)}
     </div>`;
+}
+// relevance score (drives sort order) as a pill that glows stronger the higher it is
+function scorePill(v) {
+  if (v == null || isNaN(+v)) return '';
+  const s = Math.max(0, Math.min(1, +v));
+  const pct = Math.round(s * 100);
+  return `<span class="score-pill" style="--s:${s.toFixed(2)}" title="Relevance score that drives sorting">
+    <span class="score-dot"></span>score ${pct}%</span>`;
 }
 function itemActionsHTML(id) {
   return `<div class="item-actions">

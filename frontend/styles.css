@@ -359,6 +359,13 @@ label.field > span { display: block; font-size: 11px; color: var(--muted); margi
 .senti.positive { background: rgba(231,199,154,.16); color: var(--hl-cool); }
 .senti.negative { background: rgba(234,164,106,.16); color: var(--hl); }
 .senti.neutral { background: var(--panel-2); color: var(--muted); }
+/* relevance score pill: border/fill/glow intensify with the score (--s 0..1) */
+.score-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px; color: var(--hl); font-variant-numeric: tabular-nums;
+  border: 1px solid rgba(234,164,106, calc(.18 + var(--s, 0) * .55));
+  background: rgba(234,164,106, calc(.04 + var(--s, 0) * .14)); }
+.score-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hl);
+  box-shadow: 0 0 calc(2px + var(--s, 0) * 6px) rgba(234,164,106, calc(.3 + var(--s, 0) * .7)); }
 
 /* ---------- collections ---------- */
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px,1fr)); gap: 14px; }
