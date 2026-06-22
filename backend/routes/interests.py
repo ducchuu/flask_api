@@ -12,8 +12,20 @@ from flask import Blueprint, abort, g, jsonify, request
 from backend.auth import require_auth
 from backend.db import get_db
 from backend.models import Interest
+from backend.services.interest_suggestions import COMMON_INTERESTS
 
 bp = Blueprint("interests", __name__, url_prefix="/api/interests")
+
+
+@bp.get("/suggestions")
+def list_suggestions() -> Any:
+    """Return the static list of common interests for onboarding/autocomplete.
+
+    No auth needed - it's just curated data, the same for everyone. The
+    ``/suggestions`` path never collides with /<int:interest_id> because the
+    int converter won't match a non-numeric segment.
+    """
+    return jsonify(COMMON_INTERESTS)
 
 
 def _parse_payload(data: Any) -> tuple[str, str, float]:

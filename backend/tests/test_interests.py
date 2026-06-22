@@ -249,3 +249,13 @@ def test_same_name_different_case_are_distinct(app, client, db):
     make_interest(client, headers, name="Python")
     names = [i["name"] for i in client.get("/api/interests", headers=headers).get_json()]
     assert sorted(names) == ["Python", "python"]
+
+
+def test_suggestions_returns_common_interests(client):
+    """The suggestions list is public and each entry has a name + keywords."""
+    resp = client.get("/api/interests/suggestions")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert isinstance(data, list) and len(data) > 20
+    first = data[0]
+    assert isinstance(first["name"], str) and isinstance(first["keywords"], list)

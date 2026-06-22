@@ -124,6 +124,25 @@ function userWeights() { try { return { ...DEFAULT_WEIGHTS, ...JSON.parse(state.
 function userPrefs()   { try { return { ...DEFAULT_PREFS,   ...JSON.parse(state.user?.source_prefs_json || '{}') }; } catch { return { ...DEFAULT_PREFS }; } }
 function userLangs()   { try { const v = JSON.parse(state.user?.languages_json || '[]'); return Array.isArray(v) ? v.filter((c) => LANGS[c]) : []; } catch { return []; } }
 
+// common interests from the backend, fetched once and reused for the onboarding
+// chips and the type-ahead autocomplete on interest name inputs
+let _suggestions = null;
+async function loadSuggestions() {
+  if (_suggestions) return _suggestions;
+  const r = await api('/interests/suggestions');
+  _suggestions = r.ok && Array.isArray(r.data) ? r.data : [];
+  return _suggestions;
+}
+// native <datalist> the browser uses for autocomplete on a linked input
+function suggestDatalist(suggestions) {
+  return `<datalist id="interestList">${suggestions.map((s) => `<option value="${esc(s.name)}"></option>`).join('')}</datalist>`;
+}
+// when the typed name matches a suggestion, prefill its keywords (if empty)
+function prefillKeywords(nameEl, kwEl, suggestions) {
+  const match = suggestions.find((s) => s.name.toLowerCase() === nameEl.value.trim().toLowerCase());
+  if (match && !kwEl.value.trim()) kwEl.value = (match.keywords || []).join(', ');
+}
+
 // ---------------------------------------------------------------------------
 // router
 // ---------------------------------------------------------------------------
@@ -509,9 +528,12 @@ function renderAuth() {
 // ===========================================================================
 // ONBOARDING
 // ===========================================================================
-function renderOnboarding() {
+async function renderOnboarding() {
   const draft = [];
   const prefs = userPrefs();
+  const suggestions = await loadSuggestions();
+  // suggestions the user hasn't already picked, shown as clickable chips
+  const proposed = () => suggestions.filter((s) => !draft.some((d) => d.name.toLowerCase() === s.name.toLowerCase()));
 
   const draw = () => {
     app().innerHTML = `
@@ -522,11 +544,16 @@ function renderOnboarding() {
 
         <label class="field" style="margin-top:18px"><span>Add an interest</span></label>
         <div class="tag-add">
-          <input type="text" id="iName" placeholder="e.g. Artificial Intelligence" />
+          <input type="text" id="iName" list="interestList" autocomplete="off" placeholder="e.g. Artificial Intelligence" />
           <input type="text" id="iKw" placeholder="keywords, comma separated" />
           <button class="btn" id="addInt">Add</button>
         </div>
-        <div class="tags">
+        ${suggestDatalist(suggestions)}
+        <p class="hint" style="margin:14px 0 6px">Popular interests, tap to add</p>
+        <div class="tags suggest-row">
+          ${proposed().slice(0, 14).map((s) => `<button type="button" class="tag suggest" data-sugg="${esc(s.name)}">+ ${esc(s.name)}</button>`).join('')}
+        </div>
+        <div class="tags" style="margin-top:12px">
           ${draft.length ? draft.map((d, i) => `
             <span class="tag">${esc(d.name)}${d.keywords.length ? ` , <span style="color:var(--muted)">${esc(d.keywords.join(', '))}</span>` : ''}
             <button data-del="${i}" title="remove">${ic('close')}</button></span>`).join('')
@@ -552,6 +579,12 @@ function renderOnboarding() {
     $('#addInt').onclick = add;
     $('#iKw').onkeydown = (e) => { if (e.key === 'Enter') add(); };
     $('#iName').onkeydown = (e) => { if (e.key === 'Enter') $('#iKw').focus(); };
+    $('#iName').oninput = () => prefillKeywords($('#iName'), $('#iKw'), suggestions);
+    // tap a proposed interest to add it (with its keywords) straight to the draft
+    app().querySelectorAll('[data-sugg]').forEach((b) => b.onclick = () => {
+      const s = suggestions.find((x) => x.name === b.dataset.sugg);
+      if (s) { draft.push({ name: s.name, keywords: s.keywords || [] }); draw(); }
+    });
     app().querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { draft.splice(+b.dataset.del, 1); draw(); });
     app().querySelectorAll('input[type=range]').forEach((r) => r.oninput = () => {
       prefs[r.dataset.key] = +r.value; r.closest('.slider-row').querySelector('.pct').textContent = `${Math.round(r.value * 100)}%`;
@@ -604,7 +637,7 @@ function radarSVG(items, id) {
   }).join('');
   const pts = radarPoints(items.map((it) => it.value));
   const dots = pts.map((p) => `<circle class="radar-dot" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" />`).join('');
-  return `<svg id="${id}" class="radar" viewBox="0 0 240 240">
+  return `<svg id="${id}" class="radar" viewBox="-35 -35 310 310">
     ${rings}${axes}
     <polygon class="radar-area" points="${pts.map(fmt).join(' ')}" />
     <g class="radar-dots">${dots}</g>${labels}
@@ -1242,6 +1275,7 @@ function wireSpark() {
 async function renderSettings() {
   const p = $('#page');
   const w = userWeights(); const prefs = userPrefs(); const langSel = userLangs();
+  const suggestions = await loadSuggestions();
   p.innerHTML = `
     <div class="page-head"><div><h1>Settings</h1><p>Your profile, interests, and how Pulse scores relevance.</p></div></div>
 
@@ -1266,8 +1300,12 @@ async function renderSettings() {
       <h3>Relevance weights</h3><p class="hint">These tune your score live. Higher means more influence.</p>
       <div class="weights-wrap">
         <div id="weights">${Object.keys(DEFAULT_WEIGHTS).map((k) => sliderHTML(k, k, w[k])).join('')}</div>
-        ${radarSVG(Object.keys(DEFAULT_WEIGHTS).map((k) => ({ label: k[0].toUpperCase() + k.slice(1), value: w[k] })), 'weightsRadar')}
+        <div class="radar-panel">
+          <span class="radar-cap">Weight balance</span>
+          ${radarSVG(Object.keys(DEFAULT_WEIGHTS).map((k) => ({ label: k[0].toUpperCase() + k.slice(1), value: w[k] })), 'weightsRadar')}
+        </div>
       </div>
+      <button class="btn primary" style="margin-top:16px" data-action="save-weights">Save weights</button>
     </div>
 
     <div class="chart-card glass">
@@ -1288,13 +1326,15 @@ async function renderSettings() {
     <div class="chart-card glass">
       <h3>Interests</h3><p class="hint">The topics Pulse watches for you. Create, edit and delete.</p>
       <div class="tag-add">
-        <input type="text" id="niName" placeholder="Interest name" />
+        <input type="text" id="niName" list="interestList" autocomplete="off" placeholder="Interest name" />
         <input type="text" id="niKw" placeholder="keywords, comma separated" />
         <button class="btn" data-action="add-interest">Add</button>
       </div>
+      ${suggestDatalist(suggestions)}
       <div id="ints">${skeletons(1)}</div>
     </div>`;
 
+  if ($('#niName')) $('#niName').oninput = () => prefillKeywords($('#niName'), $('#niKw'), suggestions);
   const radar = $('#weightsRadar');
   app().querySelectorAll('input[type=range]').forEach((r) => r.oninput = () => {
     r.closest('.slider-row').querySelector('.pct').textContent = `${Math.round(r.value * 100)}%`;
