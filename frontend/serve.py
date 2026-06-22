@@ -34,7 +34,7 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             with urllib.request.urlopen(req) as resp:
                 self._relay(resp.status, resp.headers, resp.read())
-        except urllib.error.HTTPError as exc:  # backend returned 4xx/5xx — pass it through
+        except urllib.error.HTTPError as exc:  # backend returned 4xx/5xx, pass it through
             self._relay(exc.code, exc.headers, exc.read())
         except urllib.error.URLError:
             self._relay(502, {"Content-Type": "application/json"},

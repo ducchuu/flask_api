@@ -7,7 +7,7 @@ pipeline continues with results from the remaining sources.
 
 import json
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional
+from typing import Callable, List, Dict, Any, Optional
 
 from backend.db import get_db
 
@@ -139,7 +139,9 @@ def _within_window(published_at: Optional[str], cutoff: datetime) -> bool:
         return False
 
 
-def _safe_fetch(fetch_fn, query: str, cache_key: str) -> List[Dict[str, Any]]:
+def _safe_fetch(
+    fetch_fn: Callable[[str], List[Dict[str, Any]]], query: str, cache_key: str
+) -> List[Dict[str, Any]]:
     """Call a fetcher via cache, catching upstream errors so one source
     failing does not bring down the whole pipeline.
 
