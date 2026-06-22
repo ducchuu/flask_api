@@ -1,18 +1,22 @@
 import os
 import json
 import requests
+import sys
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from backend.fetchers.normalize import normalize_lemmy
 from backend.services.fetchers.base import RateLimitError, UpstreamServerError, UpstreamParseError
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
-def fetch_lemmy(query: str) -> List[Dict[str, Any]]:
-    """
-    fetch from Lemmy matching query
-    """
+LEMMY_LANG_MAP = {
+    "en": 37, "es": 39, "fr": 47, "de": 32, "it": 72, "pt": 130, 
+    "nl": 115, "ru": 135, "zh": 182, "ja": 74, "ar": 8, "hi": 57
+}
+
+def fetch_lemmy(query: str, lang: Optional[str] = None) -> List[Dict[str, Any]]:
+    print(f"fetch_lemmy called with query={query}, lang={lang}", file=sys.stderr)
     if os.getenv("FIXTURE_MODE") == "1":
         fixture_path = FIXTURE_DIR / "lemmy_sample.json"
         if fixture_path.exists():
@@ -26,7 +30,7 @@ def fetch_lemmy(query: str) -> List[Dict[str, Any]]:
     params = {
         "q": query,
         "type_": "Posts",
-        "limit": 10,
+        "limit": 50 if lang else 10,
         "sort": "TopAll"
     }
 
@@ -46,4 +50,11 @@ def fetch_lemmy(query: str) -> List[Dict[str, Any]]:
         raise UpstreamParseError("Failed to parse JSON from Lemmy", source="lemmy") from e
 
     posts = data.get("posts", [])
-    return [normalize_lemmy(item) for item in posts]
+    
+    if lang and lang in LEMMY_LANG_MAP:
+        target_id = LEMMY_LANG_MAP[lang]
+        posts = [p for p in posts if p.get("post", {}).get("language_id") == target_id]
+
+    res = [normalize_lemmy(item) for item in posts[:10]]
+    print(f"fetch_lemmy returning {len(res)} posts", file=sys.stderr)
+    return res

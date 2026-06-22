@@ -33,7 +33,7 @@ def fetch_youtube(query: str, lang: Optional[str] = None) -> List[Dict[str, Any]
         "part": "id",
         "q": query,
         "type": "video",
-        "maxResults": 10,
+        "maxResults": 50 if lang else 10,
         "key": api_key,
     }
     if lang:
@@ -50,7 +50,7 @@ def fetch_youtube(query: str, lang: Optional[str] = None) -> List[Dict[str, Any]
         raise UpstreamServerError(f"YouTube returned {search_resp.status_code}", source="youtube")
         
     search_data = search_resp.json()
-    video_ids = [item["id"]["videoId"] for item in search_data.get("items", [])]
+    video_ids = [item.get("id", {}).get("videoId") for item in search_data.get("items", []) if item.get("id", {}).get("videoId")]
     
     if not video_ids:
         return []
@@ -74,4 +74,17 @@ def fetch_youtube(query: str, lang: Optional[str] = None) -> List[Dict[str, Any]
         raise UpstreamServerError(f"YouTube returned {details_resp.status_code}", source="youtube")
 
     details_data = details_resp.json()
-    return [normalize_youtube(item) for item in details_data.get("items", [])]
+    items = details_data.get("items", [])
+    
+    if lang:
+        filtered_items = []
+        for item in items:
+            snippet = item.get("snippet", {})
+            default_lang = (snippet.get("defaultLanguage") or "").lower()
+            audio_lang = (snippet.get("defaultAudioLanguage") or "").lower()
+            
+            if default_lang.startswith(lang.lower()) or audio_lang.startswith(lang.lower()):
+                filtered_items.append(item)
+        items = filtered_items
+
+    return [normalize_youtube(item) for item in items[:10]]

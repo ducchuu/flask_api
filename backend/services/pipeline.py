@@ -211,7 +211,6 @@ def generate_feed(
     raw_items: List[Dict[str, Any]] = []
 
     # one fetch per language when set, otherwise a single language-agnostic fetch.
-    # Lemmy has no language filter, so it stays outside the language loop.
     languages = _parse_languages(languages_json) or [None]
 
     for q in queries:
@@ -225,10 +224,10 @@ def generate_feed(
                 raw_items.extend(
                     _safe_fetch(lambda qq, _l=lang: fetch_youtube(qq, _l), q, f"youtube_{q}{sfx}")
                 )
-        if not source_filter or source_filter == "discussion":
-            raw_items.extend(
-                _safe_fetch(fetch_lemmy, q, f"lemmy_{q}")
-            )
+            if not source_filter or source_filter == "discussion":
+                raw_items.extend(
+                    _safe_fetch(lambda qq, _l=lang: fetch_lemmy(qq, _l), q, f"lemmy_{q}{sfx}")
+                )
 
     # drop anything older than the freshness window before doing any work
     if freshness_days:
