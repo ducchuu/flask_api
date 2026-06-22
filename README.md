@@ -75,7 +75,7 @@ Visiting http://127.0.0.1:5000 in your browser will return "Test home page URL g
 
 
 
-Then, to run locally, in the project directory run:
+Then, to run locally, open new window in Terminal/Command Prompt, navigate to the project directory and run:
 ```python
 python frontend/serve.py
 ```
