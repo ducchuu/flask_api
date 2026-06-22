@@ -33,11 +33,10 @@ DEFAULT_WEIGHTS = {
     "popularity": 0.2,
     "source": 0.1,
 }
-# Default per-source-type preference, feeding the "source" component.
+# Default per-source-type preference, feeding the "source" component
 DEFAULT_SOURCE_PREFS = {"news": 0.8, "video": 0.5, "discussion": 0.7}
 
-# Language codes the GNews/YouTube fetchers can filter by. Kept in sync with
-# the choices the frontend offers in Settings.
+# language codes the GNews/YouTube fetchers can filter by. Kept in sync with the choices the frontend offers in Settings.
 SUPPORTED_LANGUAGES = {
     "en", "es", "fr", "de", "it", "pt", "nl", "ru", "zh", "ja", "ar", "hi",
 }
@@ -157,7 +156,7 @@ def _safe_fetch(fetch_fn, query: str, cache_key: str) -> List[Dict[str, Any]]:
             cache_key, lambda _, _q=query: fetch_fn(_q)
         )
     except UpstreamError:
-        # Log the failure but continue
+        # log the failure but continue
         return []
 
 
@@ -264,33 +263,26 @@ def generate_feed(
 
     stories = cluster_items(enriched, threshold=0.3)
 
+    # one ranking key for the chosen order. We sort the items inside each story
+    # with it and then the stories themselves, so the card's lead item and the
+    # feed order always agree (otherwise the sort looks broken in the UI).
     if sort_by == "recency":
-        # newest story first, by the most recent item it contains
-        stories.sort(
-            key=lambda s: max(
-                [it.get("published_at", "") for it in s.get("items", [])],
-                default=""
-            ),
-            reverse=True
-        )
+        item_key = lambda it: it.get("published_at", "") or ""
+        empty = ""
     elif sort_by == "popularity":
-        # most engaged story first, by its most popular item
-        stories.sort(
-            key=lambda s: max(
-                [popularity(it.get("metrics", {}), it.get("source_type", ""))
-                 for it in s.get("items", [])],
-                default=0.0
-            ),
-            reverse=True
-        )
-    else:
-        # default: highest relevance score first
-        stories.sort(
-            key=lambda s: max(
-                [it.get("relevance_score", 0.0) for it in s.get("items", [])],
-                default=0.0
-            ),
-            reverse=True
-        )
+        item_key = lambda it: popularity(it.get("metrics", {}), it.get("source_type", ""))
+        empty = 0.0
+    else:  # relevance (default)
+        item_key = lambda it: it.get("relevance_score", 0.0) or 0.0
+        empty = 0.0
+
+    for story in stories:
+        story.get("items", []).sort(key=item_key, reverse=True)
+
+    # rank each story by its best (now first) item
+    stories.sort(
+        key=lambda s: item_key(s["items"][0]) if s.get("items") else empty,
+        reverse=True,
+    )
 
     return stories
