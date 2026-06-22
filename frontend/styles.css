@@ -479,6 +479,8 @@ a.coll-item-link:hover .coll-go { color: var(--hl); transform: translateX(3px); 
 .tag-add input { flex: 1; min-width: 140px; }
 .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .tag { background: var(--panel); border: 1px solid var(--stroke); padding: 8px 13px; border-radius: 7px; font-size: 14px; display: flex; gap: 8px; align-items: center; }
+/* interest chips lean amber; language buttons (button.tag) keep the neutral panel */
+span.tag { background: color-mix(in srgb, var(--amber) 14%, var(--panel)); border-color: color-mix(in srgb, var(--amber) 38%, var(--stroke)); }
 .tag button { background: none; border: none; color: var(--muted); display: grid; place-items: center; }
 .tag button:hover { color: var(--amber); }
 .tag button svg { width: 14px; height: 14px; }

@@ -1351,7 +1351,6 @@ async function renderSettings() {
   const ints = r.ok ? r.data : [];
   $('#ints').innerHTML = ints.length ? `<div class="tags">${ints.map((it) => `
     <span class="tag">${esc(it.name)}${it.keywords?.length ? ` , <span style="color:var(--muted)">${esc(it.keywords.join(', '))}</span>` : ''}
-      , w${it.weight}
       <button data-action="edit-interest" data-id="${it.id}" data-name="${esc(it.name)}" data-kw="${esc((it.keywords || []).join(', '))}" data-weight="${it.weight}" title="edit">${ic('edit')}</button>
       <button data-action="del-interest" data-id="${it.id}" title="delete">${ic('close')}</button>
     </span>`).join('')}</div>`
