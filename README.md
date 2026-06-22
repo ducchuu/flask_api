@@ -73,6 +73,17 @@ curl http://127.0.0.1:5000/api/health
 
 Visiting http://127.0.0.1:5000 in your browser will return "Test home page URL good" as an updated baseline health check.
 
+
+
+Then, to run locally, in the project directory run:
+```python
+python frontend/serve.py
+```
+
+Visting http://127.0.0.1:8000 in your browser will open the frontent of the application.
+
+
+
 ## Running the tests
 
 Expected 325 tests to run and pass.
