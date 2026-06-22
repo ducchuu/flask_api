@@ -151,3 +151,101 @@ def test_update_missing_interest_is_404(app, client, db):
     headers = auth_headers(app, make_user(db))
     resp = client.put("/api/interests/9999", json={"name": "x"}, headers=headers)
     assert resp.status_code == 404
+
+
+def test_add_then_remove_keeps_other_interests(app, client, db):
+    """Removing one interest leaves the rest untouched."""
+    headers = auth_headers(app, make_user(db))
+    space = make_interest(client, headers, name="Space")
+    make_interest(client, headers, name="Climate")
+    make_interest(client, headers, name="AI")
+
+    assert client.delete(
+        f"/api/interests/{space['id']}", headers=headers
+    ).status_code == 204
+
+    names = [i["name"] for i in client.get("/api/interests", headers=headers).get_json()]
+    assert "Space" not in names
+    assert set(names) == {"Climate", "AI"}
+
+
+def test_re_add_after_remove(app, client, db):
+    """An interest can be added again after being deleted (as a new row)."""
+    headers = auth_headers(app, make_user(db))
+    first = make_interest(client, headers, name="Quantum")
+    client.delete(f"/api/interests/{first['id']}", headers=headers)
+
+    again = make_interest(client, headers, name="Quantum")
+    assert again["id"] != first["id"]
+    names = [i["name"] for i in client.get("/api/interests", headers=headers).get_json()]
+    assert names == ["Quantum"]
+
+
+def test_multi_word_interest_name(app, client, db):
+    """A name made of several words is stored and returned verbatim."""
+    headers = auth_headers(app, make_user(db))
+    resp = client.post(
+        "/api/interests",
+        json={"name": "machine learning", "keywords": ["ai"]},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.get_json()["name"] == "machine learning"
+
+
+def test_multi_word_keywords(app, client, db):
+    """Keywords can themselves be multi-word phrases."""
+    headers = auth_headers(app, make_user(db))
+    kws = ["artificial intelligence", "large language models"]
+    resp = client.post(
+        "/api/interests",
+        json={"name": "AI", "keywords": kws},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.get_json()["keywords"] == kws
+
+
+def test_outer_whitespace_trimmed_inner_spacing_kept(app, client, db):
+    """Leading/trailing spaces are stripped but the words stay separated."""
+    headers = auth_headers(app, make_user(db))
+    resp = client.post(
+        "/api/interests",
+        json={"name": "  deep learning  ", "keywords": []},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.get_json()["name"] == "deep learning"
+
+
+def test_interest_name_case_preserved(app, client, db):
+    """The name's casing is stored exactly as sent (not lowercased)."""
+    headers = auth_headers(app, make_user(db))
+    resp = client.post(
+        "/api/interests",
+        json={"name": "Artificial Intelligence", "keywords": []},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.get_json()["name"] == "Artificial Intelligence"
+
+
+def test_keyword_case_preserved(app, client, db):
+    """Keyword casing round-trips unchanged."""
+    headers = auth_headers(app, make_user(db))
+    resp = client.post(
+        "/api/interests",
+        json={"name": "Tech", "keywords": ["GPU", "AI", "MacBook"]},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.get_json()["keywords"] == ["GPU", "AI", "MacBook"]
+
+
+def test_same_name_different_case_are_distinct(app, client, db):
+    """'python' and 'Python' are two separate interests (no case folding)."""
+    headers = auth_headers(app, make_user(db))
+    make_interest(client, headers, name="python")
+    make_interest(client, headers, name="Python")
+    names = [i["name"] for i in client.get("/api/interests", headers=headers).get_json()]
+    assert sorted(names) == ["Python", "python"]
