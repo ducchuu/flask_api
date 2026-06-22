@@ -1317,6 +1317,31 @@ function readSliders(rootSel) {
   return out;
 }
 
+// gather the whole settings form and save it in one PATCH, so changing any one
+// field (name, weights, source prefs, languages) keeps all the others intact
+async function saveSettings(msg) {
+  const body = {};
+  const nameEl = $('#uname');
+  if (nameEl) {
+    const username = nameEl.value.trim();
+    if (!username) { toast('Username required', 'err'); return false; }
+    body.username = username;
+  }
+  if ($('#weights')) body.weights_json = JSON.stringify(readSliders('#weights'));
+  if ($('#prefs')) body.source_prefs_json = JSON.stringify(readSliders('#prefs'));
+  if ($('#langs')) {
+    const codes = Array.from(app().querySelectorAll('#langs .tag.on')).map((b) => b.dataset.code);
+    body.languages_json = JSON.stringify(codes);
+  }
+  const r = await api('/users/me', { method: 'PATCH', body });
+  if (r.ok) {
+    state.user = r.data.user;
+    localStorage.setItem('pulse_user', JSON.stringify(state.user));
+    toast(msg || 'Settings saved', 'ok');
+  } else toast(errMsg(r), 'err');
+  return r.ok;
+}
+
 // ===========================================================================
 // modal
 // ===========================================================================
@@ -1466,18 +1491,12 @@ document.addEventListener('click', async (e) => {
   }
 
   if (a === 'save-name') {
-    const username = $('#uname').value.trim();
-    if (!username) { toast('Username required', 'err'); return; }
-    const r = await api('/users/me', { method: 'PATCH', body: { username } });
-    if (r.ok) { state.user = r.data.user; localStorage.setItem('pulse_user', JSON.stringify(state.user)); toast('Profile updated', 'ok'); renderShell('settings', renderSettings); }
-    else toast(errMsg(r), 'err');
+    // saveSettings persists the whole form first, so re-rendering won't drop edits
+    if (await saveSettings('Profile updated')) renderShell('settings', renderSettings);
     return;
   }
   if (a === 'save-weights') {
-    const weights = readSliders('#weights'); const prefs = readSliders('#prefs');
-    const r = await api('/users/me', { method: 'PATCH', body: { weights_json: JSON.stringify(weights), source_prefs_json: JSON.stringify(prefs) } });
-    if (r.ok) { state.user = r.data.user; localStorage.setItem('pulse_user', JSON.stringify(state.user)); toast('Saved, your feed will rescore', 'ok'); }
-    else toast(errMsg(r), 'err');
+    await saveSettings('Saved, your feed will rescore');
     return;
   }
 
@@ -1490,10 +1509,7 @@ document.addEventListener('click', async (e) => {
     return;
   }
   if (a === 'save-langs') {
-    const codes = Array.from(app().querySelectorAll('#langs .tag.on')).map((b) => b.dataset.code);
-    const r = await api('/users/me', { method: 'PATCH', body: { languages_json: JSON.stringify(codes) } });
-    if (r.ok) { state.user = r.data.user; localStorage.setItem('pulse_user', JSON.stringify(state.user)); toast('Saved, your feed will use these languages', 'ok'); }
-    else toast(errMsg(r), 'err');
+    await saveSettings('Saved, your feed will use these languages');
     return;
   }
 
