@@ -20,6 +20,15 @@ const SLIDER_COLORS = {
   news: '#f3c98a', video: '#e8a85f', discussion: '#c87f42',
 };
 const DEFAULT_PREFS   = { news: 0.8, video: 0.5, discussion: 0.7 };
+// stopwords to strip from client-side keyword aggregation — covers common
+// grammatical words that slip through from non-English content (Spanish,
+// Italian, Portuguese, French) since the backend enrich step only knows English.
+const FRONT_STOPWORDS = new Set([
+  'de','la','que','el','en','del','los','las','un','una','por','con','se','su','al','es','son','ha',
+  'le','para','pero','este','esta','si','ya','no','lo','me','te','mi','más','les','au','aux','du','des',
+  'di','il','da','in','per','gli','delle','dei','della','dello',
+  'do','dos','das','não','com','uma','www','http','https','com','org','net',
+]);
 // languages the user can pick (up to 3) to filter fetched news/video.
 // codes must match SUPPORTED_LANGUAGES in backend/services/pipeline.py
 const LANGS = {
@@ -813,7 +822,9 @@ async function renderDashboard() {
 // by the backend enrich step), shown as clickable topic tags
 function topTopicsHTML(stories) {
   const m = {};
-  stories.flatMap((s) => s.items).forEach((i) => (i.keywords || []).forEach((k) => { m[k] = (m[k] || 0) + 1; }));
+  stories.flatMap((s) => s.items).forEach((i) => (i.keywords || []).forEach((k) => {
+    if (k.length > 2 && !FRONT_STOPWORDS.has(k.toLowerCase())) m[k] = (m[k] || 0) + 1;
+  }));
   const top = Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 12);
   if (!top.length) return '';
   const max = Math.max(...top.map((e) => e[1]));
@@ -1085,12 +1096,14 @@ async function renderInsights() {
   const stories = r.stories;
   const items = stories.flatMap((s) => s.items);
 
-  const [bySrc, byInt, byDay] = await Promise.all([
-    api('/items/stats?by=source_type'), api('/items/stats?by=interest'), api('/items/stats?by=day'),
+  const [bySrc, byDay] = await Promise.all([
+    api('/items/stats?by=source_type'), api('/items/stats?by=day'),
   ]);
   const srcData = pickStats(bySrc, 'source_type') || aggCount(items, (i) => i.source_type);
   const dayData = pickStats(byDay, 'day', true) || aggByDay(items);
-  const intData = pickStats(byInt, 'interest') || aggKeywords(items);
+  // always use the live feed for topic mix — the DB stats endpoint only counts
+  // persisted items which is a small stale subset of the current feed.
+  const intData = aggKeywords(items);
 
   const avgRel = items.length ? (items.reduce((a, i) => a + (+i.relevance || 0), 0) / items.length) : 0;
   const kpis = [
@@ -1130,7 +1143,10 @@ function pickStats(r, key, isDay) {
 function aggCount(items, fn) { const m = {}; items.forEach((i) => { const k = fn(i) || 'other'; m[k] = (m[k] || 0) + 1; }); return m; }
 function aggByDay(items) { const m = {}; items.forEach((i) => { if (i.published_at) { const d = i.published_at.slice(0, 10); m[d] = (m[d] || 0) + 1; } }); return m; }
 function aggKeywords(items) {
-  const m = {}; items.forEach((i) => (i.keywords || []).forEach((k) => { m[k] = (m[k] || 0) + 1; }));
+  const m = {};
+  items.forEach((i) => (i.keywords || []).forEach((k) => {
+    if (k.length > 2 && !FRONT_STOPWORDS.has(k.toLowerCase())) m[k] = (m[k] || 0) + 1;
+  }));
   return Object.fromEntries(Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 8));
 }
 function barsHTML(data, colorFn, asFilter) {
