@@ -15,7 +15,8 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
         config: optional overrides (used by tests to point at a temp database
             and flip TESTING on)
     """
-    app = Flask(__name__)
+    frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+    app = Flask(__name__, static_folder=frontend_dir, static_url_path="")
     app.config.from_mapping(
         DATABASE=os.environ.get("DATABASE", "pulse.db"),
         SECRET_KEY=os.environ.get("SECRET_KEY", "somesortasecret"),
@@ -42,8 +43,8 @@ def _register_routes(app: Flask) -> None:
 
     @app.get("/")
     def index() -> Any:
-        """Placeholder home route so the root URL returns 200 until the frontend lands."""
-        return "Test home page URL good", 200 # added just for a test, instaed of 404 error on home page because of no frontend implementation
+        """Serve the single-page frontend."""
+        return app.send_static_file("index.html")
 
     from backend.routes.interests import bp as interests_bp
     from backend.routes.feed import bp as feed_bp
